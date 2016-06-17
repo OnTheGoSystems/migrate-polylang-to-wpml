@@ -13,6 +13,15 @@ class Migrate_Polylang_To_WPML {
 		add_action('admin_menu', array($this, 'admin_menu'));
 		
 		add_action('admin_init', array($this, 'handle_migration'));
+		
+		add_action( 'admin_enqueue_scripts', array($this, 'enqueue_enabling_script') );
+	}
+	
+	public function enqueue_enabling_script() {
+		if ($this->pre_check_ready_all()) {
+			wp_register_script('migrate-enabling-script', plugins_url('scripts/enabling.js', __FILE__), array('jquery'), '', true);
+			wp_enqueue_script('migrate-enabling-script');
+		}
 	}
 	
 	public function admin_menu() {
@@ -26,16 +35,72 @@ class Migrate_Polylang_To_WPML {
 		?>
 <div class="wrap">
 	<h2><?php _e('Migrate data from Polylang to WPML', 'migrate-polylang'); ?></h2>
+<?php echo $this->pre_check_text(); 
+if ($this->pre_check_ready_all()) :
+?>	
 	<form method="post" action="tools.php?page=polylang-importer">
+		<label for='migrate_polylang_to_wpml_confirm_db_backup'>
+		<input type='checkbox' id='migrate_polylang_to_wpml_confirm_db_backup' name='migrate_polylang_to_wpml_confirm_db_backup'> 
+		 <?php _e("I confirm that I've created <a href='https://codex.wordpress.org/Backing_Up_Your_Database' target='_blank'>database backup</a>", "migrate-polylang"); ?>
+		</label> <br>
 		<input type="hidden" name="migrate_wpml_action" value="migrate" />
 		<input type="submit" 
 			   name="migrate-polylang-wpml" 
+			   id="migrate_polylang_wpml"
 			   value="<?php _e('Migrate', 'migrate-polylang'); ?>" 
-			   class="button button-primary" >
+			   class="button button-primary" disabled >
 		
 	</form>
+<?php
+else :
+?>
+	<div style="color:red;font-weight: bold;"><?php _e("Please make sure all requirements have been met", "migrate-polylang"); ?></div>
+<?php endif; ?>
 </div>	
 		<?php
+	}
+	
+	private function pre_check_text() {
+		
+	$ok = "style='color:green'>✔ ";
+	$bad = "style='color:red'>✘ ";
+		
+	$poly_check = $this->pre_check_polylang() ? $ok : $bad;
+	
+	$wpml_check = $this->pre_check_wpml() ? $ok : $bad;
+	
+	$wpml_wizard = $this->pre_check_wizard_complete() ? $ok : $bad;
+		
+$text = "
+	<h3>" . __("Before you click migrate you must be sure that:", "migrate-polylang") . "</h3>
+	<ul>
+	<li><span $poly_check" . __("Polylang is deactivated", "migrate-polylang") . "</span></li>
+	<li><span $wpml_check" . __("WPML Multilingual Blog/Cms is active", "migrate-polylang") . "</span></li>
+	<li><span $wpml_wizard" . __("You have finished WPML configuration wizard", "migrate-polylang") . "</span></li>
+	<li>". __("If you want to import also strings translation, you must have WPML String Translation plugin activated (Not required)", "migrate-polylang") . "
+	</ul>
+		";
+
+	return $text;	
+	}
+	
+	private function pre_check_polylang() {
+		return !defined('POLYLANG_VERSION');
+	}
+	
+	private function pre_check_wpml() {
+		return defined('ICL_SITEPRESS_VERSION');
+	}
+	
+	private function pre_check_wizard_complete() {
+		return apply_filters( 'wpml_setting', false, 'setup_complete' );
+	}
+	
+	private function pre_check_ready_all() {
+		$a = $this->pre_check_polylang();
+		$b = $this->pre_check_wpml();
+		$c = $this->pre_check_wizard_complete();
+		return $this->pre_check_polylang() and $this->pre_check_wpml() and $this->pre_check_wizard_complete();
 	}
 	
 	public function handle_migration() {
@@ -48,23 +113,25 @@ class Migrate_Polylang_To_WPML {
 	public function migrate_page_done_notice() {
 		?>
 		<div class="notice notice-success is-dismissible">
-		<?php _e('Migration done. Now you can disable this plugin forever.', 'migrate-polylang'); ?>
+		<?php _e('Migration done. Now you can disable this plugin forever. Thank you for choosing WPML!', 'migrate-polylang'); ?>
 		</div>
 		<?php
 	}
 	
 	private function migrate() {
-		$this->migrate_languages();
+		if ($this->pre_check_ready_all()) {
+			$this->migrate_languages();
 		
-		$this->migrate_posts();
-		
-		$this->migrate_taxonomies();
-		
-		$this->migrate_strings();
-		
-		// $this->migrate_options();
-		
-		flush_rewrite_rules();
+			$this->migrate_posts();
+
+			$this->migrate_taxonomies();
+
+			$this->migrate_strings();
+
+			// $this->migrate_options();
+
+			flush_rewrite_rules();
+		}
 	}
 	
 	private function migrate_languages() {
