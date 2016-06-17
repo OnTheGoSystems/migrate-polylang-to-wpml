@@ -60,7 +60,7 @@ class Migrate_Polylang_To_WPML {
 		
 		$this->migrate_taxonomies();
 		
-		// $this->migrate_strings();
+		$this->migrate_strings();
 		
 		// $this->migrate_options();
 		
@@ -238,8 +238,105 @@ class Migrate_Polylang_To_WPML {
 	}
 	
 	private function migrate_strings() {
-		// case 'icl_st_save_translation' --> function icl_add_string_translation
-		// 
+		$polylang_languages_map = $this->get_polylang_languages_map();
+		
+		$wpml_string_translations = $this->get_wpml_string_translations();
+		
+		
+		$polylang_strings_array = $this->get_polylang_strings_array();
+		
+		if ($polylang_strings_array) {
+	
+			foreach ($polylang_strings_array as $string_group) {
+				$this->migrate_string_group($string_group, $polylang_languages_map, $wpml_string_translations);		
+			}
+		}
+	}
+	
+	private function get_wpml_string_translations() {
+		global $wpdb;
+		
+		$table = $wpdb->prefix . "icl_strings";
+		
+		$query = "SELECT id, language, value FROM $table";
+		
+		$results = $wpdb->get_results($query);
+		
+		$langcode_indexed = array();
+		
+		if ($results) {
+			foreach($results as $string) {
+				$langcode_indexed[$string->language][$string->value] = $string;
+			}
+		}
+		
+		return $langcode_indexed;
+		
+	}
+	
+	private function get_polylang_languages() {
+		global $wpdb;
+		
+		register_taxonomy('language', null);
+		$table = $wpdb->prefix . "icl_translations";
+		$wpdb->delete($table, array('element_type' => 'tax_language'));
+		
+		$polylang_languages = get_terms('language', array( 'orderby' => 'term_id' ));
+		
+		return $polylang_languages;
+	}
+	
+	private function get_polylang_languages_map() {
+		$polylang_languages = $this->get_polylang_languages();
+		
+		$polylang_languages_map = null;
+		
+		foreach ($polylang_languages as $language) {
+			$polylang_languages_map[] = $language->slug;
+		}
+		
+		return $polylang_languages_map;
+	}
+	
+	private function get_polylang_strings_array() {
+		global $wpdb;
+		
+		$polylang_strings_array = null;
+		
+		$post_with_polylang_strings = "SELECT post_content FROM ".$wpdb->prefix."posts where post_type = 'polylang_mo' order by ID desc limit 1";
+		
+		$polylang_strings = $wpdb->get_var($post_with_polylang_strings);
+		
+		
+		if ($polylang_strings) {
+			$polylang_strings_array = maybe_unserialize($polylang_strings);
+		}
+		
+		return $polylang_strings_array;
+	}
+	
+	private function migrate_string_group($string_group, $polylang_languages_map, $wpml_string_translations) {
+		$indexed_polylang_string_group = array_combine($polylang_languages_map, $string_group);
+				
+		foreach ($indexed_polylang_string_group as $polylang_language => $polylang_string ) {
+			if (isset( $wpml_string_translations[$polylang_language][$polylang_string] )) {
+				$other_languages = $this->get_other_languages($polylang_languages_map, $polylang_language);
+
+				foreach ($other_languages as $other_language) {
+					icl_add_string_translation(
+							$wpml_string_translations[$polylang_language][$polylang_string]->id,
+							$other_language,
+							$indexed_polylang_string_group[$other_language],
+							ICL_STRING_TRANSLATION_COMPLETE
+							);
+				}
+				break;
+			}
+		}
+	}
+	
+	private function get_other_languages($polylang_languages_map, $polylang_language) {
+		return array_diff($polylang_languages_map, array($polylang_language));
 	}
 }
 
