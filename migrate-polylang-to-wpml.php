@@ -56,9 +56,9 @@ class Migrate_Polylang_To_WPML {
 	private function migrate() {
 		$this->migrate_languages();
 		
-		// $this->migrate_posts();
+		$this->migrate_posts();
 		
-		// $this->migrate_taxonomies();
+		$this->migrate_taxonomies();
 		
 		$this->migrate_strings();
 		
