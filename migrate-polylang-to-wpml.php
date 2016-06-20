@@ -107,7 +107,6 @@ class Migrate_Polylang_To_WPML {
 
 		if (!empty($get_languages) && is_array($get_languages)) {
 			foreach ($get_languages as $get_language) {
-				$languages[] = $get_language->slug;
 				$language[$get_language->slug] = $get_language->term_taxonomy_id;
 
 				$query = $wpdb->prepare("SELECT p.ID AS post_id FROM {$wpdb->prefix}posts p INNER JOIN {$wpdb->prefix}term_relationships r ON r.object_id=p.ID WHERE r.term_taxonomy_id=%d", $language[$get_language->slug]);
@@ -123,7 +122,7 @@ class Migrate_Polylang_To_WPML {
 
 			foreach ($pll_post_translations as $pll_post_translation) {
 				$relations[] = maybe_unserialize( $pll_post_translation->description );
-			}
+			} // end for each $pll_post_translations
 
 
 			foreach($posts as $code => $id ){
@@ -132,7 +131,7 @@ class Migrate_Polylang_To_WPML {
 							$relations[] = array($code => $value, 'language_code' => $code);
 					}
 				}
-			}
+			}// end for each posts
 
 		  foreach ($relations as $relation) {
 
@@ -172,9 +171,9 @@ class Migrate_Polylang_To_WPML {
 						'language_code' => $language_code,
 						'source_language_code' => $default_language
 					));
-				}
-			}
-		}
+				} // end foreach $relation
+			} //end foreach  $relations
+		} // end if $pll_post_translations
 	}
 
 	private function migrate_taxonomies() {
