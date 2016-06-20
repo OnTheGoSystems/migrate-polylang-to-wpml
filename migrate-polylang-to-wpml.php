@@ -151,41 +151,65 @@ $text = "
 			}
 		}
 	}
+
+	private function in_array_r($needle, $haystack, $strict = false) {
+	    foreach ($haystack as $item) {
+	        if (($strict ? $item === $needle : $item == $needle) || (is_array($item) && $this->in_array_r($needle, $item, $strict))) {
+	            return true;
+	        }
+	    }
+	    return false;
+	}
 	
 	private function migrate_posts() {
-		
+		global $wpdb;
+		register_taxonomy('language', null);
 		register_taxonomy('post_translations', null);
-		
+		$get_languages = get_terms('language', array( 'hide_empty' => false));
 		$pll_post_translations = get_terms('post_translations', array( 'hide_empty' => false));
-		
 		$default_language = $this->polylang_option['default_lang'];
-		
+		if (!empty($get_languages) && is_array($get_languages)) {
+			foreach ($get_languages as $get_language) {
+				$language[$get_language->slug] = $get_language->term_taxonomy_id;
+				$query = $wpdb->prepare("SELECT p.ID AS post_id FROM {$wpdb->prefix}posts p INNER JOIN {$wpdb->prefix}term_relationships r ON r.object_id=p.ID WHERE r.term_taxonomy_id=%d", $language[$get_language->slug]);
+				$results = $wpdb->get_results($query);
+				foreach ($results as $result){
+					$posts[$get_language->slug][] = $result->post_id;
+				}
+			} //end $get_languages for each
+		} //end if $get_languages
 		if (!empty($pll_post_translations) && is_array($pll_post_translations)) {
 			foreach ($pll_post_translations as $pll_post_translation) {
-				$relation = maybe_unserialize( $pll_post_translation->description );
-				
-				$original_post_id = $relation[$default_language];
-				
-				$post_type = get_post_type($original_post_id);
-				
-				$post_type = apply_filters( 'wpml_element_type', $post_type );
-				
-				do_action('wpml_set_element_language_details', array(
+				$relations[] = maybe_unserialize( $pll_post_translation->description );
+			} // end for each $pll_post_translations
+			foreach($posts as $code => $id ){
+				foreach($id as $value){
+					if($this->in_array_r($value, $relations) === FALSE){
+							$relations[] = array($code => $value, 'language_code' => $code);
+					}
+				}
+			}// end for each posts
+		  foreach ($relations as $relation) {
+				if($relation['language_code']){
+					$language_code = $relation['language_code'];
+				}else{
+					$language_code = $default_language;
+				}
+			$original_post_id = $relation[$language_code];
+			$post_type = get_post_type($original_post_id);
+			$post_type = apply_filters( 'wpml_element_type', $post_type );
+			do_action('wpml_set_element_language_details', array(
 					'element_id' => $original_post_id,
 					'element_type' => $post_type,
 					'trid' => false,
-					'language_code' => $default_language
-				));
-				
-				$original_post_language_details = apply_filters('wpml_element_language_details', null, array(
+					'language_code' => $language_code
+			));
+			$original_post_language_details = apply_filters('wpml_element_language_details', null, array(
 					'element_id' => $original_post_id,
 					'element_type' => $post_type
-				));
-				
-				$trid = $original_post_language_details->trid;
-				
-				unset($relation[$default_language]);
-				
+			));
+			$trid = $original_post_language_details->trid;
+			unset($relation[$default_language]);
 				foreach ($relation as $language_code => $post_id) {
 					do_action('wpml_set_element_language_details', array(
 						'element_id' => $post_id,
@@ -194,9 +218,9 @@ $text = "
 						'language_code' => $language_code,
 						'source_language_code' => $default_language
 					));
-				}
-			}
-		}
+				} // end foreach $relation
+			} //end foreach  $relations
+		} // end if $pll_post_translations
 	}
 	
 	private function migrate_taxonomies() {
