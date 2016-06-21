@@ -237,8 +237,14 @@ $text = "
 			foreach ($pll_term_translations as $pll_term_translation) {
 				$relation = maybe_unserialize( $pll_term_translation->description );
 
-				if (isset($relation[$default_language])) {
-					$original_term_id = $relation[$default_language];
+				if(count($relation) > 1 ){
+					$language_code = $default_language;
+				}else{
+					$language_code = key($relation);
+				}
+				
+				if (isset($relation[$language_code])) {
+					$original_term_id = $relation[$language_code];
 
 					$original_term = $this->get_term_by_term_id( $original_term_id );
 
@@ -254,7 +260,7 @@ $text = "
 								'element_id' => $original_term_taxonomy_id,
 								'element_type' => $taxonomy,
 								'trid' => false,
-								'language_code' => $default_language
+								'language_code' => $language_code
 							));
 						} catch (Exception $e) {
 							echo $e->getMessage();
