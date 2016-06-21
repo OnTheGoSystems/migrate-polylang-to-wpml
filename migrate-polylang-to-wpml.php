@@ -128,8 +128,6 @@ $text = "
 
 			$this->migrate_strings();
 
-			// $this->migrate_options();
-
 			flush_rewrite_rules();
 		}
 	}
@@ -405,7 +403,14 @@ $text = "
 	}
 
 	private function migrate_string_group($string_group, $polylang_languages_map, $wpml_string_translations) {
-		$indexed_polylang_string_group = array_combine($polylang_languages_map, $string_group);
+		
+		$indexed_polylang_string_group = array();
+		
+		for($i=0; $i<count($polylang_languages_map); $i++) {
+			if (isset($polylang_languages_map[$i]) && isset($string_group[$i])) {
+				$indexed_polylang_string_group[$polylang_languages_map[$i]] = $string_group[$i];
+			}
+		}
 
 		foreach ($indexed_polylang_string_group as $polylang_language => $polylang_string ) {
 			if (isset( $wpml_string_translations[$polylang_language][$polylang_string] )) {
