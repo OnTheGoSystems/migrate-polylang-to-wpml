@@ -332,18 +332,19 @@ $text = "
 
 	private function migrate_strings() {
 		$polylang_languages_map = $this->get_polylang_languages_map();
-
+		
 		$wpml_string_translations = $this->get_wpml_string_translations();
 
-
-		$polylang_strings_array = $this->get_polylang_strings_array();
+		
+		$polylang_strings_array = $this->get_polylang_strings_array($polylang_languages_map);
 
 		if ($polylang_strings_array) {
 
-			foreach ($polylang_strings_array as $string_group) {
-				$this->migrate_string_group($string_group, $polylang_languages_map, $wpml_string_translations);
+			foreach ($polylang_strings_array as $lang_id => $string_groups) {
+				$this->migrate_string_groups($lang_id, $string_groups, $polylang_languages_map, $wpml_string_translations);
 			}
 		}
+		
 	}
 
 	private function get_wpml_string_translations() {
@@ -385,58 +386,72 @@ $text = "
 		$polylang_languages_map = null;
 
 		foreach ($polylang_languages as $language) {
-			$polylang_languages_map[] = $language->slug;
+			$polylang_languages_map[$language->term_id] = $language->slug;
 		}
 
 		return $polylang_languages_map;
 	}
 
-	private function get_polylang_strings_array() {
+	private function get_polylang_strings_array($polylang_languages_map) {
 		global $wpdb;
 
 		$polylang_strings_array = null;
+		
+		foreach(array_keys($polylang_languages_map) as $lang_id) {
+			$post_with_polylang_strings = "SELECT post_content FROM ".$wpdb->prefix."posts where post_type = 'polylang_mo'  AND post_title=%s order by ID desc limit 1";
 
-		$post_with_polylang_strings = "SELECT post_content FROM ".$wpdb->prefix."posts where post_type = 'polylang_mo' order by ID desc limit 1";
-
-		$polylang_strings = $wpdb->get_var($post_with_polylang_strings);
+			$polylang_strings = $wpdb->get_var($wpdb->prepare($post_with_polylang_strings, "polylang_mo_".$lang_id));
 
 
-		if ($polylang_strings) {
-			$polylang_strings_array = maybe_unserialize($polylang_strings);
+			if ($polylang_strings) {
+				$polylang_strings_array[$lang_id] = maybe_unserialize($polylang_strings);
+			}
 		}
+
+		
 
 		return $polylang_strings_array;
 	}
 
-	private function migrate_string_group($string_group, $polylang_languages_map, $wpml_string_translations) {
+	private function migrate_string_groups($lang_id, $string_groups, $polylang_languages_map, $wpml_string_translations) {
 		
 		$indexed_polylang_string_group = array();
 		
-		for($i=0; $i<count($polylang_languages_map); $i++) {
-			if (isset($polylang_languages_map[$i]) && isset($string_group[$i])) {
-				$indexed_polylang_string_group[$polylang_languages_map[$i]] = $string_group[$i];
-			}
-		}
-
-		foreach ($indexed_polylang_string_group as $polylang_language => $polylang_string ) {
-			if (isset( $wpml_string_translations[$polylang_language][$polylang_string] )) {
-				$other_languages = $this->get_other_languages($polylang_languages_map, $polylang_language);
-
-				foreach ($other_languages as $other_language) {
+		$default_language = $this->polylang_option['default_lang'];
+		
+		$to_language = $polylang_languages_map[$lang_id];
+		
+		foreach($string_groups as $group) {
+			if (isset($wpml_string_translations[$default_language][ $group[0] ])) {
+				icl_add_string_translation(
+					$wpml_string_translations[$default_language][$group[0]]->id,
+					$to_language,
+					$group[1],
+					ICL_STRING_TRANSLATION_COMPLETE
+					);
+			} else if (isset($wpml_string_translations[$to_language][ $group[0] ])) {
 					icl_add_string_translation(
-							$wpml_string_translations[$polylang_language][$polylang_string]->id,
-							$other_language,
-							$indexed_polylang_string_group[$other_language],
-							ICL_STRING_TRANSLATION_COMPLETE
-							);
-				}
-				break;
-			}
+					$wpml_string_translations[$to_language][$group[0]]->id,
+					$default_language,
+					$group[1],
+					ICL_STRING_TRANSLATION_COMPLETE
+					);
+			} else if (isset($wpml_string_translations[$default_language][ $group[1] ])) {
+				icl_add_string_translation(
+					$wpml_string_translations[$default_language][$group[1]]->id,
+					$to_language,
+					$group[0],
+					ICL_STRING_TRANSLATION_COMPLETE
+					);
+			} else if (isset($wpml_string_translations[$to_language][ $group[1] ])) {
+					icl_add_string_translation(
+					$wpml_string_translations[$to_language][$group[1]]->id,
+					$default_language,
+					$group[0],
+					ICL_STRING_TRANSLATION_COMPLETE
+					);
+			} 
 		}
-	}
-
-	private function get_other_languages($polylang_languages_map, $polylang_language) {
-		return array_diff($polylang_languages_map, array($polylang_language));
 	}
 }
 
