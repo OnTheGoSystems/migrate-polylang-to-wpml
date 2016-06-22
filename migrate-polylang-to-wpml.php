@@ -2,6 +2,10 @@
 
 /*
 Plugin Name: Migrate Polylang to WPML
+Description: Import multilingual data from Polylang to WPML
+Author: Konrad Karpieszuk, Harshad Mane
+Plugin URL: https://wpml.org
+Version: 0.1
  */
 
 class Migrate_Polylang_To_WPML {
