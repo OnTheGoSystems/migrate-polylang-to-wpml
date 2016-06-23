@@ -81,7 +81,8 @@ $text = "
 	<li><span $poly_check" . __("Polylang is deactivated", "migrate-polylang") . "</span></li>
 	<li><span $wpml_check" . __("WPML Multilingual Blog/Cms is active", "migrate-polylang") . "</span></li>
 	<li><span $wpml_wizard" . __("You have finished WPML configuration wizard", "migrate-polylang") . "</span></li>
-	<li>". __("If you want to import also strings translation, you must have WPML String Translation plugin activated (Not required)", "migrate-polylang") . "
+	<li>". __("If you want to import also strings translation, you must have WPML String Translation plugin activated (Not required)", "migrate-polylang") . "</li>
+	<li>". __("If you want to import also widgets language settings, you must have <a href='https://wordpress.org/plugins/wpml-widgets/' target='_blank'>WPML Widgets plugin</a> activated (Not required)", "migrate-polylang") . "</li>
 	</ul>
 		";
 
@@ -99,11 +100,12 @@ $text = "
 	private function pre_check_wizard_complete() {
 		return apply_filters( 'wpml_setting', false, 'setup_complete' );
 	}
+	
+	private function pre_check_wpml_widgets() {
+		return class_exists('WPML_Widgets');
+	}
 
 	private function pre_check_ready_all() {
-		$a = $this->pre_check_polylang();
-		$b = $this->pre_check_wpml();
-		$c = $this->pre_check_wizard_complete();
 		return $this->pre_check_polylang() and $this->pre_check_wpml() and $this->pre_check_wizard_complete();
 	}
 
@@ -131,6 +133,10 @@ $text = "
 			$this->migrate_taxonomies();
 
 			$this->migrate_strings();
+			
+			if ($this->pre_check_wpml_widgets()) {
+				$this->migrate_widgets();
+			}
 
 			flush_rewrite_rules();
 		}
@@ -455,6 +461,30 @@ $text = "
 					ICL_STRING_TRANSLATION_COMPLETE
 					);
 			} 
+		}
+	}
+	
+	private function migrate_widgets() {
+		global $wpdb;
+		
+		$options_table = $wpdb->prefix . "options";
+		
+		$all_widgets_query = "SELECT option_name FROM $options_table WHERE option_name LIKE 'widget_%'";
+		
+		$all_widgets = $wpdb->get_results($all_widgets_query);
+		
+		if ($all_widgets) {
+			foreach ($all_widgets as $widget) {
+				$option = get_option($widget->option_name); 
+				if ($option && is_array($option)) {
+					foreach ($option as $key => $val) {
+						if (is_numeric($key) && isset($val['pll_lang'])) {
+							$option[$key]['wpml_language'] = $val['pll_lang'];
+						}
+					}
+					update_option($widget->option_name, $option);
+				}
+			}
 		}
 	}
 }
