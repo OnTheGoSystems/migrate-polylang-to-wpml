@@ -16,6 +16,7 @@ Import multilingual data from Polylang to WPML
 - Migrates all your posts, pages and custom post types: sets correct language and joins them together to be translation of each other
 - Migrates all your taxonomies (categories, tags and custom taxonomies)
 - Migrates your strings (only those which has been translated in Polylang and WPMl String Translation recognized and registered as correct string)
+- Migrate widgets: you need activate [WPML Widgets](https://wordpress.org/plugins/wpml-widgets/) plugin
 
 # What this plugin doesn't (yet)
 - Migrate widgets: after migration you will have to go to Apperance > Widgets and adjust their settings manually

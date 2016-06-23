@@ -82,7 +82,7 @@ $text = "
 	<li><span $wpml_check" . __("WPML Multilingual Blog/Cms is active", "migrate-polylang") . "</span></li>
 	<li><span $wpml_wizard" . __("You have finished WPML configuration wizard", "migrate-polylang") . "</span></li>
 	<li>". __("If you want to import also strings translation, you must have WPML String Translation plugin activated (Not required)", "migrate-polylang") . "</li>
-	<li>". __("If you want to import also widgets language settings, you must have <a href='https://wordpress.org/plugins/wpml-widgets/screenshots/' target='_blank'>WPML Widgets plugin</a> activated (Not required)", "migrate-polylang") . "</li>
+	<li>". __("If you want to import also widgets language settings, you must have <a href='https://wordpress.org/plugins/wpml-widgets/' target='_blank'>WPML Widgets plugin</a> activated (Not required)", "migrate-polylang") . "</li>
 	</ul>
 		";
 
