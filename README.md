@@ -19,7 +19,6 @@ Import multilingual data from Polylang to WPML
 - Migrate widgets: you need activate [WPML Widgets](https://wordpress.org/plugins/wpml-widgets/) plugin
 
 # What this plugin doesn't (yet)
-- Migrate widgets: after migration you will have to go to Apperance > Widgets and adjust their settings manually
 - Migrate menus: please use WPML standard option to synchronise menus
 - Migrate other settings: this will be implemented progressively, for time being you are free to adjust them manually after migration
 
