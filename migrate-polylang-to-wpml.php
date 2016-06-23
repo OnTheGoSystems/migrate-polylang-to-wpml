@@ -104,6 +104,10 @@ $text = "
 	private function pre_check_wpml_widgets() {
 		return class_exists('WPML_Widgets');
 	}
+	
+	private function pre_check_wpml_st() {
+		return defined('WPML_ST_VERSION');
+	}
 
 	private function pre_check_ready_all() {
 		return $this->pre_check_polylang() and $this->pre_check_wpml() and $this->pre_check_wizard_complete();
@@ -132,8 +136,10 @@ $text = "
 
 			$this->migrate_taxonomies();
 
-			$this->migrate_strings();
-			
+			if ($this->pre_check_wpml_st()) {
+				$this->migrate_strings();
+			}
+				
 			if ($this->pre_check_wpml_widgets()) {
 				$this->migrate_widgets();
 			}
