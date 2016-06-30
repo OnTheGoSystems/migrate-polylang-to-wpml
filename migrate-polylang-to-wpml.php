@@ -19,12 +19,36 @@ class Migrate_Polylang_To_WPML {
 		add_action('admin_init', array($this, 'handle_migration'));
 
 		add_action( 'admin_enqueue_scripts', array($this, 'enqueue_enabling_script') );
+		
+		add_action( 'wp_ajax_mpw_migrate_languages', array($this, 'ajax_migrate_languages') );
+		add_action( 'wp_ajax_mpw_migrate_posts', array($this, 'ajax_migrate_posts') );
+		add_action( 'wp_ajax_mpw_migrate_taxonomies', array($this, 'ajax_migrate_taxonomies') );
+		add_action( 'wp_ajax_mpw_migrate_strings', array($this, 'ajax_migrate_strings') );
+		add_action( 'wp_ajax_mpw_migrate_widgets', array($this, 'ajax_migrate_widgets') );
+		
 	}
 
 	public function enqueue_enabling_script() {
 		if ($this->pre_check_ready_all()) {
 			wp_register_script('migrate-enabling-script', plugins_url('scripts/enabling.js', __FILE__), array('jquery'), '', true);
 			wp_enqueue_script('migrate-enabling-script');
+			
+			
+			wp_register_script('migrate-ajax',  plugins_url('scripts/ajax.js', __FILE__), array('jquery'), '', true);
+			
+			$ajax_strings_translations = array(
+				'mig_start' => __("Migration started, please don't close this window...", 'migrate-polylang'),
+				'lan_start' => __("Moving your language settings...", 'migrate-polylang'),
+				'posts_start' => __("Setting languages for posts...", 'migrate-polylang'),
+				'tax_start' => __("Settings languages for taxonomies...", 'migrate-polylang'),
+				'str_start' => __("Translating strings (only if WPML String Translation is activated)...", 'migrate-polylang'),
+				'widg_start' => __("Localizing widgets (only if WPML Widgets is activated)...", 'migrate-polylang'),
+				'mig_done' => __("Migration done! Please check if everything is correct and deactivate or uinstall Migrate Polylang to WPML plugin", 'migrate-polylang')
+			);
+			
+			wp_localize_script('migrate-ajax', 'mpw_ajax_str', $ajax_strings_translations);
+			
+			wp_enqueue_script('migrate-ajax');
 		}
 	}
 
@@ -53,6 +77,7 @@ if ($this->pre_check_ready_all()) :
 			   id="migrate_polylang_wpml"
 			   value="<?php _e('Migrate', 'migrate-polylang'); ?>"
 			   class="button button-primary" disabled >
+		<div id="mpw_ajax_result"></div>
 
 	</form>
 <?php
@@ -146,6 +171,71 @@ $text = "
 
 			flush_rewrite_rules();
 		}
+	}
+	
+	public function ajax_migrate_languages() {
+		if ($this->pre_check_ready_all()) {
+			$this->migrate_languages();
+			$response = array(
+				'msg' => __("Language settings has been migrated", 'migrate-polylang'),
+				'res' => 'ok'
+			);
+			wp_send_json_success($response);
+		}
+	}
+	
+	public function ajax_migrate_posts() {
+		if ($this->pre_check_ready_all()) {
+			$this->migrate_posts();
+			$response = array(
+				'msg' => __("Posts, pages and custom post types has been migrated", 'migrate-polylang'),
+				'res' => 'ok'
+			);
+			wp_send_json_success($response);
+		}
+	}
+	
+	public function ajax_migrate_taxonomies() {
+		if ($this->pre_check_ready_all()) {
+			$this->migrate_taxonomies();
+			$response = array(
+				'msg' => __("Taxonomies has been migrated", 'migrate-polylang'),
+				'res' => 'ok'
+			);
+			wp_send_json_success($response);
+		}
+	}
+	
+	public function ajax_migrate_strings() {
+		if ($this->pre_check_ready_all() && $this->pre_check_wpml_st()) {
+			$this->migrate_strings();
+			$response = array(
+				'msg' => __("String translations has been migrated", 'migrate-polylang'),
+				'res' => 'ok'
+			);
+		} else {
+			$response = array(
+				'msg' => __("WPML String Translation isn't active, string translation skipped.", 'migrate-polylang'),
+				'res' => 'pass'
+			);
+		}
+		wp_send_json_success($response);
+	}
+	
+	public function ajax_migrate_widgets() {
+		if ($this->pre_check_ready_all() && $this->pre_check_wpml_widgets()) {
+			$this->migrate_widgets();
+			$response = array(
+				'msg' => __("Widgets has been localized", 'migrate-polylang'),
+				'res' => 'ok'
+			);
+		} else {
+			$response = array(
+				'msg' => __("WPML Widgets isn't active, localization skipped.", 'migrate-polylang'),
+				'res' => 'pass'
+			);
+		}
+		wp_send_json_success($response);
 	}
 
 	private function migrate_languages() {
