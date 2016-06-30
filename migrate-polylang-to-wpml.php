@@ -16,8 +16,6 @@ class Migrate_Polylang_To_WPML {
 
 		add_action('admin_menu', array($this, 'admin_menu'));
 
-		add_action('admin_init', array($this, 'handle_migration'));
-
 		add_action( 'admin_enqueue_scripts', array($this, 'enqueue_enabling_script') );
 		
 		add_action( 'wp_ajax_mpw_migrate_languages', array($this, 'ajax_migrate_languages') );
@@ -136,41 +134,6 @@ $text = "
 
 	private function pre_check_ready_all() {
 		return $this->pre_check_polylang() and $this->pre_check_wpml() and $this->pre_check_wizard_complete();
-	}
-
-	public function handle_migration() {
-		if (isset($_POST['migrate_wpml_action']) && $_POST['migrate_wpml_action'] == 'migrate') {
-			$this->migrate();
-			add_action( 'admin_notices', array($this, 'migrate_page_done_notice') );
-		}
-	}
-
-	public function migrate_page_done_notice() {
-		?>
-		<div class="notice notice-success is-dismissible">
-		<?php _e('Migration done. Now you can disable this plugin forever. Thank you for choosing WPML!', 'migrate-polylang'); ?>
-		</div>
-		<?php
-	}
-
-	private function migrate() {
-		if ($this->pre_check_ready_all()) {
-			$this->migrate_languages();
-
-			$this->migrate_posts();
-
-			$this->migrate_taxonomies();
-
-			if ($this->pre_check_wpml_st()) {
-				$this->migrate_strings();
-			}
-				
-			if ($this->pre_check_wpml_widgets()) {
-				$this->migrate_widgets();
-			}
-
-			flush_rewrite_rules();
-		}
 	}
 	
 	public function ajax_migrate_languages() {
