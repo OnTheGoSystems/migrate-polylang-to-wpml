@@ -16,7 +16,7 @@ class Migrate_Polylang_To_WPML {
 
 		add_action('admin_menu', array($this, 'admin_menu'));
 
-		add_action( 'admin_enqueue_scripts', array($this, 'enqueue_enabling_script') );
+		add_action( 'admin_enqueue_scripts', array($this, 'enqueue_scripts') );
 		
 		add_action( 'wp_ajax_mpw_migrate_languages', array($this, 'ajax_migrate_languages') );
 		add_action( 'wp_ajax_mpw_migrate_posts', array($this, 'ajax_migrate_posts') );
@@ -26,14 +26,13 @@ class Migrate_Polylang_To_WPML {
 		
 	}
 
-	public function enqueue_enabling_script() {
+	public function enqueue_scripts() {
 		if ($this->pre_check_ready_all()) {
 			wp_register_script('migrate-enabling-script', plugins_url('scripts/enabling.js', __FILE__), array('jquery'), '', true);
 			wp_enqueue_script('migrate-enabling-script');
 			
 			
 			wp_register_script('migrate-ajax',  plugins_url('scripts/ajax.js', __FILE__), array('jquery'), '', true);
-			
 			$ajax_strings_translations = array(
 				'mig_start' => __("Migration started, please don't close this window...", 'migrate-polylang'),
 				'lan_start' => __("Moving your language settings...", 'migrate-polylang'),
@@ -43,13 +42,57 @@ class Migrate_Polylang_To_WPML {
 				'widg_start' => __("Localizing widgets (only if WPML Widgets is activated)...", 'migrate-polylang'),
 				'mig_done' => __("Migration done! Please check if everything is correct and deactivate or uinstall Migrate Polylang to WPML plugin", 'migrate-polylang')
 			);
-			
 			wp_localize_script('migrate-ajax', 'mpw_ajax_str', $ajax_strings_translations);
-			
 			wp_enqueue_script('migrate-ajax');
+		}
+		
+		if (is_admin() && !$this->pre_check_wizard_complete()) {
+			wp_register_script('migrate-tooltips',  plugins_url('tooltips/js/helpcursor-min.js', __FILE__), array('jquery'), '', true);
+			wp_enqueue_script('migrate-tooltips');
+			
+			wp_register_script('migrate-tooltips-uses',  plugins_url('scripts/tooltips.js', __FILE__), array('migrate-tooltips'), '', true);
+			
+			$tooltips_texts = array(
+				'before_mig' => __('Before migrating Polylang, please finish WPML wizard', 'migrate-polylang'),
+				'default_language' => sprintf(__('With Polylang your default language was %s', 'migrate-polylang'), $this->get_polylang_default_language_name()),
+				'additional_languages' => sprintf(__('Polylang additional languages: %s', 'migrate-polylang'), join(", ", $this->get_polylang_additional_languages_names()))
+			);
+			wp_localize_script('migrate-tooltips-uses', 'tooltips_texts', $tooltips_texts);
+			wp_enqueue_script('migrate-tooltips-uses');
+			
+			wp_register_style('migrate-tooltips-css',  plugins_url('tooltips/css/helpcursor.css', __FILE__));
+			wp_enqueue_style('migrate-tooltips-css');
 		}
 	}
 
+	private function get_polylang_additional_languages_names() {
+		$pll_languages = $this->get_polylang_languages();
+		
+		$default_language = $this->polylang_option['default_lang'];
+		
+		$additional_languages = array();
+		
+		foreach ($pll_languages as $language) {
+			if ($language->slug !== $default_language) {
+				$additional_languages[] = $language->name;
+			}
+		}
+		
+		return $additional_languages;
+	}
+	
+	private function get_polylang_default_language_name() {
+		$pll_languages = $this->get_polylang_languages();
+		$default_language = $this->polylang_option['default_lang'];
+		
+		foreach ($pll_languages as $language) {
+			if ($language->slug == $default_language) {
+				return $language->name;
+			}
+		}
+		
+	}
+	
 	public function admin_menu() {
 
 		$title = __("Migrate from Polylang to WPML", 'migrate-polylang');
@@ -204,7 +247,7 @@ $text = "
 	private function migrate_languages() {
 		global $wpdb;
 
-		$pll_languages = get_terms( 'language', array( 'hide_empty' => false, 'orderby' => 'term_group' ) );
+		$pll_languages = $this->get_polylang_languages();
 
 		if (!empty($pll_languages) && is_array($pll_languages)) {
 			foreach ($pll_languages as $pll_language) {
