@@ -24,6 +24,8 @@ class Migrate_Polylang_To_WPML {
 		add_action( 'wp_ajax_mpw_migrate_strings', array($this, 'ajax_migrate_strings') );
 		add_action( 'wp_ajax_mpw_migrate_widgets', array($this, 'ajax_migrate_widgets') );
 		
+		add_action('admin_notices', array($this, 'guide_admin_notices'));
+		
 	}
 
 	public function enqueue_scripts() {
@@ -63,6 +65,61 @@ class Migrate_Polylang_To_WPML {
 			wp_register_style('migrate-tooltips-css',  plugins_url('tooltips/css/helpcursor.css', __FILE__));
 			wp_enqueue_style('migrate-tooltips-css');
 		}
+	}
+	
+	public function guide_admin_notices() {
+		if (!$this->pre_check_polylang()) {
+			return $this->guide_notice_disable_polylang();
+		}
+		
+		if (!$this->pre_check_wpml()) {
+			return $this->guide_notice_activate_wpml();
+		}
+		
+		if ($this->pre_check_wizard_complete() && !$this->migration_page_displayed()) {
+			return $this->guide_notice_goto_migration_page();
+		}
+		
+	}
+	
+	private function guide_notice_disable_polylang() {
+?>
+<div class="notice notice-error">
+	<p>
+		<?php _e("Before using WPML, you have to deactivate Polylang first!", "migrate-polylang"); ?>
+	</p>
+</div>
+<?php
+	}
+	
+	private function guide_notice_activate_wpml() {
+?>
+<div class="notice notice-error">
+	<p>
+		<?php _e("If you want to import Polylang data, please activate WPML Multilingual CMS/Blog first.", "migrate-polylang"); ?>
+	</p>
+</div>
+<?php	
+	}
+	
+	private function migration_page_displayed() {
+		global $pagenow, $hook_suffix;
+		
+		return isset($pagenow) && $pagenow == 'tools.php' && isset($hook_suffix) && $hook_suffix == "tools_page_polylang-importer";
+	}
+	
+	private function guide_notice_goto_migration_page() {
+?>
+<div class="notice notice-success is-dismissible">
+	<p>
+		<?php printf(__("You are ready to start migration from Polylang to WPML. Go to <a href='%s'>Tools &gt; Migrate from Polylang to WPML</a> page.", "migrate-polylang"), $this->migration_page_url()); ?>
+	</p>
+</div>
+<?php			
+	}
+	
+	private function migration_page_url() {
+		return get_admin_url(null, "tools.php?page=polylang-importer");
 	}
 
 	private function get_polylang_additional_languages_names() {
