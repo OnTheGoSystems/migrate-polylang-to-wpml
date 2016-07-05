@@ -123,7 +123,7 @@ class Migrate_Polylang_To_WPML {
 	}
 
 	private function get_polylang_additional_languages_names() {
-		$pll_languages = $this->get_polylang_languages();
+		$pll_languages = $this->get_polylang_tax_languages();
 		
 		$default_language = $this->polylang_option['default_lang'];
 		
@@ -139,7 +139,7 @@ class Migrate_Polylang_To_WPML {
 	}
 	
 	private function get_polylang_default_language_name() {
-		$pll_languages = $this->get_polylang_languages();
+		$pll_languages = $this->get_polylang_tax_languages();
 		$default_language = $this->polylang_option['default_lang'];
 		
 		foreach ($pll_languages as $language) {
@@ -321,7 +321,7 @@ $text = "
 	private function migrate_languages() {
 		global $wpdb;
 
-		$pll_languages = $this->get_polylang_languages();
+		$pll_languages = $this->get_polylang_tax_languages();
 
 		if (!empty($pll_languages) && is_array($pll_languages)) {
 			foreach ($pll_languages as $pll_language) {
@@ -347,11 +347,11 @@ $text = "
 
 	private function migrate_posts() {
 		global $wpdb;
-		register_taxonomy('language', null);
-		register_taxonomy('post_translations', null);
-		$get_languages = get_terms('language', array( 'hide_empty' => false));
-		$pll_post_translations = get_terms('post_translations', array( 'hide_empty' => false));
+		
+		$get_languages = $this->get_polylang_tax_languages();
+		$pll_post_translations = $this->get_polylang_tax_post_translations();
 		$default_language = $this->polylang_option['default_lang'];
+
 		if (!empty($get_languages) && is_array($get_languages)) {
 			foreach ($get_languages as $get_language) {
 				$language[$get_language->slug] = $get_language->term_taxonomy_id;
@@ -408,15 +408,7 @@ $text = "
 	private function migrate_taxonomies() {
 		global $wpdb;
 
-		register_taxonomy('term_translations', null);
-
-		// remove just registered taxonomy from icl_translations
-		$table = $wpdb->prefix . "icl_translations";
-
-		$wpdb->delete($table, array('element_type' => 'tax_term_translations'));
-
-		$pll_term_translations = get_terms('term_translations', array( 'hide_empty' => false));
-
+		$pll_term_translations = $this->get_polylang_tax_term_translations();
 		$default_language = $this->polylang_option['default_lang'];
 
 		if (!empty($pll_term_translations) && is_array($pll_term_translations)) {
@@ -554,20 +546,41 @@ $text = "
 
 	}
 
-	private function get_polylang_languages() {
+	private function get_polylang_tax_languages() {
 		global $wpdb;
 
 		register_taxonomy('language', null);
 		$table = $wpdb->prefix . "icl_translations";
 		$wpdb->delete($table, array('element_type' => 'tax_language'));
-
 		$polylang_languages = get_terms('language', array( 'orderby' => 'term_id' ));
 
 		return $polylang_languages;
 	}
+	
+	private function get_polylang_tax_post_translations() {
+		global $wpdb;
+		
+		register_taxonomy('post_translations', null);
+		$table = $wpdb->prefix . "icl_translations";
+		$wpdb->delete($table, array('element_type' => 'tax_post_translations'));
+		$pll_post_translations = get_terms('post_translations', array( 'hide_empty' => false));
+		
+		return $pll_post_translations;
+	}
+	
+	private function get_polylang_tax_term_translations() {
+		global $wpdb;
+		
+		register_taxonomy('term_translations', null);
+		$table = $wpdb->prefix . "icl_translations";
+		$wpdb->delete($table, array('element_type' => 'tax_term_translations'));
+		$pll_term_translations = get_terms('term_translations', array( 'hide_empty' => false));
+		
+		return $pll_term_translations;
+	}
 
 	private function get_polylang_languages_map() {
-		$polylang_languages = $this->get_polylang_languages();
+		$polylang_languages = $this->get_polylang_tax_languages();
 
 		$polylang_languages_map = null;
 
