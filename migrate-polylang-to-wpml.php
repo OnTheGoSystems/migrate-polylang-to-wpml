@@ -161,7 +161,11 @@ class Migrate_Polylang_To_WPML {
 		?>
 <div class="wrap">
 	<h2><?php _e('Migrate data from Polylang to WPML', 'migrate-polylang'); ?></h2>
-<?php echo $this->pre_check_text();
+<?php 
+
+echo $this->introduction_text();
+
+echo $this->pre_check_text();
 if ($this->pre_check_ready_all()) :
 ?>
 	<form method="post" action="tools.php?page=polylang-importer">
@@ -185,6 +189,19 @@ else :
 <?php endif; ?>
 </div>
 		<?php
+	}
+	
+	private function introduction_text() {
+	$text = "<h3>".__("During migration this plugin will:", "migrate-polylang")."</h3>";
+	$text .= "<ul>";
+	$text .= "<li><strong>".__("Migrate languages.", "migrate-polylang")."</strong> ".__("It will check what languages were active in Polylang and it will activate them in WPML.")."</li>";
+	$text .= "<li><strong>".__("Migrate posts.", "migrate-polylang")."</strong> ".__("Plugin will set correct language for every post and join each other in language relation. This includes also Pages and other custom post types.")."</li>";
+	$text .= "<li><strong>".__("Migrate taxonomies.", "migrate-polylang")."</strong> ".__("Similar like with posts: your every category, tag and other custom taxonomies will get correct language assigment and language relation.")."</li>";
+	$text .= "<li><strong>".__("Migrate admin strings (only if you are using WPML String Translation).", "migrate-polylang")."</strong> ".__("Plugin will try to find if you have translated any admin string in Polylang and it will try to migrate this translation to WPML. Bear in mind that this probably will not migrate every string - this is because Polylang is handling string translation in much different way than WPML")."</li>";
+	$text .= "<li><strong>".__("Migrate widgets (only if you are using <a href='https://wordpress.org/plugins/wpml-widgets/' target='_blank'>WPML Widgets</a>.", "migrate-polylang")."</strong> ".__("If you have created some WordPress widgets while using Polylang and you've set language for them, this plugin will migrate it as well.")."</li>";
+	$text .= "</ul>";
+		
+	return $text;
 	}
 
 	private function pre_check_text() {
