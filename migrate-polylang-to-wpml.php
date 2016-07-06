@@ -9,10 +9,13 @@ Version: 0.1
  */
 
 class Migrate_Polylang_To_WPML {
-	private $polylang_option;
+	private $polylang_data;
 
 	public function __construct() {
-		$this->polylang_option = get_option('polylang');
+		
+		require_once('classes/class-mpw_polylang_data.php');
+		
+		$this->polylang_data = new mpw_polylang_data(); 
 
 		add_action('admin_menu', array($this, 'admin_menu'));
 
@@ -56,8 +59,9 @@ class Migrate_Polylang_To_WPML {
 			
 			$tooltips_texts = array(
 				'before_mig' => __('Before migrating Polylang, please finish WPML wizard', 'migrate-polylang'),
-				'default_language' => sprintf(__('With Polylang your default language was %s', 'migrate-polylang'), $this->get_polylang_default_language_name()),
-				'additional_languages' => sprintf(__('Polylang additional languages: %s', 'migrate-polylang'), join(", ", $this->get_polylang_additional_languages_names()))
+				'default_language' => sprintf(__('With Polylang your default language was %s', 'migrate-polylang'), $this->polylang_data->get_default_language_name()),
+				'additional_languages' => sprintf(__('Polylang additional languages: %s', 'migrate-polylang'), 
+						join(", ", $this->polylang_data->get_additional_languages_names()))
 			);
 			wp_localize_script('migrate-tooltips-uses', 'tooltips_texts', $tooltips_texts);
 			wp_enqueue_script('migrate-tooltips-uses');
@@ -120,34 +124,6 @@ class Migrate_Polylang_To_WPML {
 	
 	private function migration_page_url() {
 		return get_admin_url(null, "tools.php?page=polylang-importer");
-	}
-
-	private function get_polylang_additional_languages_names() {
-		$pll_languages = $this->get_polylang_tax_languages();
-		
-		$default_language = $this->polylang_option['default_lang'];
-		
-		$additional_languages = array();
-		
-		foreach ($pll_languages as $language) {
-			if ($language->slug !== $default_language) {
-				$additional_languages[] = $language->name;
-			}
-		}
-		
-		return $additional_languages;
-	}
-	
-	private function get_polylang_default_language_name() {
-		$pll_languages = $this->get_polylang_tax_languages();
-		$default_language = $this->polylang_option['default_lang'];
-		
-		foreach ($pll_languages as $language) {
-			if ($language->slug == $default_language) {
-				return $language->name;
-			}
-		}
-		
 	}
 	
 	public function admin_menu() {
@@ -321,7 +297,7 @@ $text = "
 	private function migrate_languages() {
 		global $wpdb;
 
-		$pll_languages = $this->get_polylang_tax_languages();
+		$pll_languages = $this->polylang_data->get_languages();
 
 		if (!empty($pll_languages) && is_array($pll_languages)) {
 			foreach ($pll_languages as $pll_language) {
@@ -348,9 +324,9 @@ $text = "
 	private function migrate_posts() {
 		global $wpdb;
 		
-		$get_languages = $this->get_polylang_tax_languages();
-		$pll_post_translations = $this->get_polylang_tax_post_translations();
-		$default_language = $this->polylang_option['default_lang'];
+		$get_languages = $this->polylang_data->get_languages();
+		$pll_post_translations = $this->polylang_data->get_post_translations();
+		$default_language = $this->polylang_data->get_default_language_slug();
 
 		if (!empty($get_languages) && is_array($get_languages)) {
 			foreach ($get_languages as $get_language) {
@@ -408,8 +384,8 @@ $text = "
 	private function migrate_taxonomies() {
 		global $wpdb;
 
-		$pll_term_translations = $this->get_polylang_tax_term_translations();
-		$default_language = $this->polylang_option['default_lang'];
+		$pll_term_translations = $this->polylang_data->get_term_translations();
+		$default_language = $this->polylang_data->get_default_language_slug();
 
 		if (!empty($pll_term_translations) && is_array($pll_term_translations)) {
 			foreach ($pll_term_translations as $pll_term_translation) {
@@ -509,7 +485,7 @@ $text = "
 	}
 
 	private function migrate_strings() {
-		$polylang_languages_map = $this->get_polylang_languages_map();
+		$polylang_languages_map = $this->polylang_data->get_languages_map();
 		
 		$wpml_string_translations = $this->get_wpml_string_translations();
 
@@ -546,51 +522,6 @@ $text = "
 
 	}
 
-	private function get_polylang_tax_languages() {
-		global $wpdb;
-
-		register_taxonomy('language', null);
-		$table = $wpdb->prefix . "icl_translations";
-		$wpdb->delete($table, array('element_type' => 'tax_language'));
-		$polylang_languages = get_terms('language', array( 'orderby' => 'term_id' ));
-
-		return $polylang_languages;
-	}
-	
-	private function get_polylang_tax_post_translations() {
-		global $wpdb;
-		
-		register_taxonomy('post_translations', null);
-		$table = $wpdb->prefix . "icl_translations";
-		$wpdb->delete($table, array('element_type' => 'tax_post_translations'));
-		$pll_post_translations = get_terms('post_translations', array( 'hide_empty' => false));
-		
-		return $pll_post_translations;
-	}
-	
-	private function get_polylang_tax_term_translations() {
-		global $wpdb;
-		
-		register_taxonomy('term_translations', null);
-		$table = $wpdb->prefix . "icl_translations";
-		$wpdb->delete($table, array('element_type' => 'tax_term_translations'));
-		$pll_term_translations = get_terms('term_translations', array( 'hide_empty' => false));
-		
-		return $pll_term_translations;
-	}
-
-	private function get_polylang_languages_map() {
-		$polylang_languages = $this->get_polylang_tax_languages();
-
-		$polylang_languages_map = null;
-
-		foreach ($polylang_languages as $language) {
-			$polylang_languages_map[$language->term_id] = $language->slug;
-		}
-
-		return $polylang_languages_map;
-	}
-
 	private function get_polylang_strings_array($polylang_languages_map) {
 		global $wpdb;
 
@@ -616,7 +547,7 @@ $text = "
 		
 		$indexed_polylang_string_group = array();
 		
-		$default_language = $this->polylang_option['default_lang'];
+		$default_language = $this->polylang_data->get_default_language_slug();
 		
 		$to_language = $polylang_languages_map[$lang_id];
 		
