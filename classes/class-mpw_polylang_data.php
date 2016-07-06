@@ -10,36 +10,30 @@ class mpw_polylang_data {
 	}
 	
 	public function get_languages() {
-		global $wpdb;
-
-		register_taxonomy('language', null);
-		$table = $wpdb->prefix . "icl_translations";
-		$wpdb->delete($table, array('element_type' => 'tax_language'));
-		$polylang_languages = get_terms('language', array( 'orderby' => 'term_id' ));
-
-		return $polylang_languages;
+		return $this->get_terms('language');
+	}
+	
+	public function get_term_languages() {
+		return $this->get_terms('term_language');
 	}
 	
 	public function get_post_translations() {
-		global $wpdb;
-		
-		register_taxonomy('post_translations', null);
-		$table = $wpdb->prefix . "icl_translations";
-		$wpdb->delete($table, array('element_type' => 'tax_post_translations'));
-		$pll_post_translations = get_terms('post_translations', array( 'hide_empty' => false));
-		
-		return $pll_post_translations;
+		return $this->get_terms('post_translations');
 	}
 	
 	public function get_term_translations() {
+		return $this->get_terms('term_translations');
+	}
+	
+	private function get_terms($tax) {
 		global $wpdb;
 		
-		register_taxonomy('term_translations', null);
+		register_taxonomy($tax, null);
 		$table = $wpdb->prefix . "icl_translations";
-		$wpdb->delete($table, array('element_type' => 'tax_term_translations'));
-		$pll_term_translations = get_terms('term_translations', array( 'hide_empty' => false));
+		$wpdb->delete($table, array('element_type' => 'tax_'.$tax));
+		$terms = get_terms($tax, array( 'hide_empty' => false));
 		
-		return $pll_term_translations;
+		return $terms;
 	}
 	
 	public function get_additional_languages_names() {
@@ -85,6 +79,57 @@ class mpw_polylang_data {
 		}
 
 		return $polylang_languages_map;
+	}
+	
+	
+	public function delete_data() {
+		update_option('mpw_polylang_data_deleted', 1);
+		$this->delete_options();
+		$this->delete_posts();
+		$this->delete_taxonomies();
+	}
+	
+	private function delete_options() {
+		delete_option('polylang');
+		delete_option('polylang_wpml_strings');
+		delete_option('polylang_widget');
+	}
+	
+	private function delete_posts() {
+		$posts = get_posts(array(
+			'posts_per_page' => -1,
+			'post_type' => 'polylang_mo', 
+			'post_status' => 'any'
+		));
+		
+		if ($posts) {
+			foreach ($posts as $post) {
+				wp_delete_post($post->ID, true);
+			}
+		}
+	}
+	
+	private function delete_taxonomies() {
+		$this->delete_tax('language');
+		$this->delete_tax('term_language');
+		$this->delete_tax('post_translations');
+		$this->delete_tax('term_translations');
+	}
+	
+	private function delete_tax($tax) {
+		$method_name = "get_";
+		$method_name .= $tax;
+		if ($tax == "language" || $tax == "term_language") {
+			$method_name .= "s";
+		}
+		
+		$terms = $this->{$method_name}();
+		
+		if ($terms && !empty($terms)) {
+			foreach ($terms as $term) {
+				wp_delete_term($term->term_id, $tax);
+			}
+		}
 	}
 
 

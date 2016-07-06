@@ -27,6 +27,8 @@ class Migrate_Polylang_To_WPML {
 		add_action( 'wp_ajax_mpw_migrate_strings', array($this, 'ajax_migrate_strings') );
 		add_action( 'wp_ajax_mpw_migrate_widgets', array($this, 'ajax_migrate_widgets') );
 		
+		add_action( 'wp_ajax_mpw_delete_polylang_data', array($this, 'ajax_delete_polylang_data') );
+		
 		add_action('admin_notices', array($this, 'guide_admin_notices'));
 		
 	}
@@ -45,7 +47,11 @@ class Migrate_Polylang_To_WPML {
 				'tax_start' => __("Settings languages for taxonomies...", 'migrate-polylang'),
 				'str_start' => __("Translating strings (only if WPML String Translation is activated)...", 'migrate-polylang'),
 				'widg_start' => __("Localizing widgets (only if WPML Widgets is activated)...", 'migrate-polylang'),
-				'mig_done' => __("Migration done! Please check if everything is correct and deactivate or uinstall Migrate Polylang to WPML plugin", 'migrate-polylang')
+				'mig_done' => __("Migration done! Please check if everything is correct and deactivate or unistall Migrate Polylang to WPML plugin", 'migrate-polylang'),
+				'mig_again_label' => __("Migrate again", "migrate-polylang"),
+				
+				'delete_confirm' => __("Warning: after deleting Polylang data you will not be able to do this migration again or return to Polylang without setting up everything from beginning.\nAre you sure you want to do this?", 'migrate-polylang'),
+				'del_start' => __("Deleting Polylang data...", 'migrate-polylang'),
 			);
 			wp_localize_script('migrate-ajax', 'mpw_ajax_str', $ajax_strings_translations);
 			wp_enqueue_script('migrate-ajax');
@@ -80,7 +86,7 @@ class Migrate_Polylang_To_WPML {
 			return $this->guide_notice_activate_wpml();
 		}
 		
-		if ($this->pre_check_wizard_complete() && !$this->migration_page_displayed()) {
+		if ($this->pre_check_wizard_complete() && !$this->migration_page_displayed() && !get_option('mpw_migration_done', false)) {
 			return $this->guide_notice_goto_migration_page();
 		}
 		
@@ -143,6 +149,15 @@ echo $this->introduction_text();
 
 echo $this->pre_check_text();
 if ($this->pre_check_ready_all()) :
+	if (get_option('mpw_migration_done', false)) {
+		$migrate_button_label = __('Migrate again', 'migrate-polylang');
+		$hide_delete_button = "";
+	} else {
+		$migrate_button_label = __('Migrate', 'migrate-polylang');
+		$hide_delete_button = "display: none;";
+	}
+
+	
 ?>
 	<form method="post" action="tools.php?page=polylang-importer">
 		<label for='migrate_polylang_to_wpml_confirm_db_backup'>
@@ -153,16 +168,26 @@ if ($this->pre_check_ready_all()) :
 		<input type="submit"
 			   name="migrate-polylang-wpml"
 			   id="migrate_polylang_wpml"
-			   value="<?php _e('Migrate', 'migrate-polylang'); ?>"
+			   value="<?php echo $migrate_button_label; ?>"
 			   class="button button-primary" disabled >
 		<div id="mpw_ajax_result"></div>
+		<input type="submit"
+			   name="remove-polylang-data"
+			   id="remove_polylang_data"
+			   value="<?php _e("Erase Polylang old data from database (Optional) ", "migrate-polylang"); ?>"
+			   class="button button-secondary"
+			   style="margin-top: 5px; <?php echo $hide_delete_button; ?>" >
+		<div id="remove_polylang_data_result"></div>
 
 	</form>
 <?php
 else :
 ?>
 	<div style="color:red;font-weight: bold;"><?php _e("Please make sure all requirements have been met", "migrate-polylang"); ?></div>
-<?php endif; ?>
+	<?php if ($this->polylang_data_deleted()) {
+		_e("You have already deleted Polylang data so there is nothing to migrate from.", "migrate-polylang");
+	}
+endif; ?>
 </div>
 		<?php
 	}
@@ -204,6 +229,10 @@ $text = "
 
 	return $text;
 	}
+	
+	private function polylang_data_deleted() {
+		return get_option('mpw_polylang_data_deleted', false);
+	}
 
 	private function pre_check_polylang() {
 		return !defined('POLYLANG_VERSION');
@@ -226,7 +255,7 @@ $text = "
 	}
 
 	private function pre_check_ready_all() {
-		return $this->pre_check_polylang() and $this->pre_check_wpml() and $this->pre_check_wizard_complete();
+		return !$this->polylang_data_deleted() && $this->pre_check_polylang() and $this->pre_check_wpml() and $this->pre_check_wizard_complete();
 	}
 	
 	public function ajax_migrate_languages() {
@@ -291,6 +320,16 @@ $text = "
 				'res' => 'pass'
 			);
 		}
+		update_option('mpw_migration_done', 1);
+		wp_send_json_success($response);
+	}
+	
+	public function ajax_delete_polylang_data() {
+		$this->polylang_data->delete_data();
+		$response = array(
+			'msg' => __("Polylang data removed from database", 'migrate-polylang'),
+			'res' => 'ok'
+		);
 		wp_send_json_success($response);
 	}
 
@@ -607,6 +646,9 @@ $text = "
 			}
 		}
 	}
+	
+	
+	
 }
 
 $migrate_polylang_to_wpml = new Migrate_Polylang_To_WPML();
