@@ -171,12 +171,23 @@ if ($this->pre_check_ready_all()) :
 			   value="<?php echo $migrate_button_label; ?>"
 			   class="button button-primary" disabled >
 		<div id="mpw_ajax_result"></div>
+		<div id="remove_polylang_data_part" style="<?php echo $hide_delete_button; ?>">
+			<h3><?php _e("Optional: erase Polylang data", "migrate-polylang"); ?></h3>
+			<label for="remove_polylang_data_accept_1">
+				<input type="checkbox" class="remove_polylang_data_accept" name="remove_polylang_data_accept_1" id="remove_polylang_data_accept_1" value="1"> 
+					<?php _e("I understand that this will remove all data by Polylang. There is no undo to restore the data.", "migrate-polylang"); ?> <br>
+			</label>
+			<label for="remove_polylang_data_accept_2">
+				<input type="checkbox" class="remove_polylang_data_accept" name="remove_polylang_data_accept_2" id="remove_polylang_data_accept_2" value="1"> 
+					<?php _e("I verified the migration and I see that my site displays fine with WPML. ", "migrate-polylang"); ?> <br>
+			</label>
 		<input type="submit"
 			   name="remove-polylang-data"
 			   id="remove_polylang_data"
 			   value="<?php _e("Erase Polylang old data from database (Optional) ", "migrate-polylang"); ?>"
 			   class="button button-secondary"
-			   style="margin-top: 5px; <?php echo $hide_delete_button; ?>" >
+			   style="margin-top: 5px;" disabled >
+		</div>
 		<div id="remove_polylang_data_result"></div>
 
 	</form>

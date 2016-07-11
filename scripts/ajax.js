@@ -29,7 +29,7 @@ jQuery(document).ready(function( $ ) {
 																
 																	$('#migrate_polylang_wpml').prop('disabled', false).val(mpw_ajax_str.mig_again_label);
 																	
-																	$('#remove_polylang_data').show();
+																	$('#remove_polylang_data_part').show();
 																});
 													});
 										});
@@ -47,7 +47,7 @@ jQuery(document).ready(function( $ ) {
 			$.post(ajaxurl,{'action':'mpw_delete_polylang_data'})
 				.done(function(resp){
 					$('#remove_polylang_data_result').append("<div>"+resp.data.msg+"</div>");
-					$('#remove_polylang_data').hide();
+					$('#remove_polylang_data_part').hide();
 					$('#migrate_polylang_wpml').hide();
 				});
 		}
