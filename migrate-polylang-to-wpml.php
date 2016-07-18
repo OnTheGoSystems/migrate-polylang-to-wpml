@@ -10,12 +10,15 @@ Version: 0.1
 
 class Migrate_Polylang_To_WPML {
 	private $polylang_data;
+	private $mpw_htaccess_check;
 
 	public function __construct() {
 		
 		require_once('classes/class-mpw_polylang_data.php');
-		
 		$this->polylang_data = new mpw_polylang_data(); 
+		
+		require_once 'classes/class-mpw_htaccess_check.php';
+		$this->mpw_htaccess_check = new MPW_Htaccess_Check($this->polylang_data);		
 
 		add_action('admin_menu', array($this, 'admin_menu'));
 
@@ -74,6 +77,11 @@ class Migrate_Polylang_To_WPML {
 			
 			wp_register_style('migrate-tooltips-css',  plugins_url('tooltips/css/helpcursor.css', __FILE__));
 			wp_enqueue_style('migrate-tooltips-css');
+		}
+		
+		if (is_admin()) {
+			wp_register_script('migrate-htaccess',  plugins_url('scripts/htaccess.js', __FILE__), array('jquery'), '', true);
+			wp_enqueue_script('migrate-htaccess');
 		}
 	}
 	
