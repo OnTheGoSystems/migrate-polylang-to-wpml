@@ -360,10 +360,11 @@ $text = "
 		if (!empty($pll_languages) && is_array($pll_languages)) {
 			foreach ($pll_languages as $pll_language) {
 				if (isset($pll_language->slug)) {
+					$slug = $this->polylang_data->lang_slug_to_wpml_format($pll_language->slug);
 					$wpdb->update(
 							$wpdb->prefix . 'icl_languages',
 							array('active' => 1),
-							array('code' => $pll_language->slug)
+							array('code' => $slug)
 							);
 				}
 			}
@@ -384,11 +385,10 @@ $text = "
 		
 		$get_languages = $this->polylang_data->get_languages();
 		$pll_post_translations = $this->polylang_data->get_post_translations();
-		$default_language = $this->polylang_data->get_default_language_slug();
+		$default_language = $this->polylang_data->lang_slug_to_wpml_format( $this->polylang_data->get_default_language_slug() );
 
 		if (!empty($get_languages) && is_array($get_languages)) {
 			foreach ($get_languages as $get_language) {
-				$language[$get_language->slug] = $get_language->term_taxonomy_id;
 				$query = $wpdb->prepare("SELECT p.ID AS post_id FROM {$wpdb->prefix}posts p INNER JOIN {$wpdb->prefix}term_relationships r ON r.object_id=p.ID WHERE r.term_taxonomy_id=%d", $get_language->term_taxonomy_id);
 				$results = $wpdb->get_results($query);
 				foreach ($results as $result){
@@ -411,7 +411,9 @@ $text = "
 					$language_code = $relation['language_code'];
 				}else{
 					$language_code = $default_language;
-			}
+				}
+				$language_code = $this->polylang_data->lang_slug_to_wpml_format($language_code);
+				
 			$original_post_id = $relation[$language_code];
 			$post_type = get_post_type($original_post_id);
 			$post_type = apply_filters( 'wpml_element_type', $post_type );
@@ -443,7 +445,7 @@ $text = "
 		global $wpdb;
 
 		$pll_term_translations = $this->polylang_data->get_term_translations();
-		$default_language = $this->polylang_data->get_default_language_slug();
+		$default_language = $this->polylang_data->lang_slug_to_wpml_format( $this->polylang_data->get_default_language_slug() );
 
 		if (!empty($pll_term_translations) && is_array($pll_term_translations)) {
 			foreach ($pll_term_translations as $pll_term_translation) {
@@ -454,6 +456,7 @@ $text = "
 				}else{
 					$language_code = key($relation);
 				}
+				$language_code = $this->polylang_data->lang_slug_to_wpml_format($language_code);
 				
 				if (isset($relation[$language_code])) {
 					$original_term_id = $relation[$language_code];
@@ -609,32 +612,36 @@ $text = "
 		
 		$to_language = $polylang_languages_map[$lang_id];
 		
+		$default_language_wpml_format = $this->polylang_data->lang_slug_to_wpml_format($default_language);
+		
+		$to_language_wpml_format = $this->polylang_data->lang_slug_to_wpml_format($to_language);
+		
 		foreach($string_groups as $group) {
 			if (isset($wpml_string_translations[$default_language][ $group[0] ])) {
 				icl_add_string_translation(
 					$wpml_string_translations[$default_language][$group[0]]->id,
-					$to_language,
+					$to_language_wpml_format,
 					$group[1],
 					ICL_STRING_TRANSLATION_COMPLETE
 					);
 			} else if (isset($wpml_string_translations[$to_language][ $group[0] ])) {
 					icl_add_string_translation(
 					$wpml_string_translations[$to_language][$group[0]]->id,
-					$default_language,
+					$default_language_wpml_format,
 					$group[1],
 					ICL_STRING_TRANSLATION_COMPLETE
 					);
 			} else if (isset($wpml_string_translations[$default_language][ $group[1] ])) {
 				icl_add_string_translation(
 					$wpml_string_translations[$default_language][$group[1]]->id,
-					$to_language,
+					$to_language_wpml_format,
 					$group[0],
 					ICL_STRING_TRANSLATION_COMPLETE
 					);
 			} else if (isset($wpml_string_translations[$to_language][ $group[1] ])) {
 					icl_add_string_translation(
 					$wpml_string_translations[$to_language][$group[1]]->id,
-					$default_language,
+					$default_language_wpml_format,
 					$group[0],
 					ICL_STRING_TRANSLATION_COMPLETE
 					);
@@ -657,7 +664,7 @@ $text = "
 				if ($option && is_array($option)) {
 					foreach ($option as $key => $val) {
 						if (is_numeric($key) && isset($val['pll_lang'])) {
-							$option[$key]['wpml_language'] = $val['pll_lang'];
+							$option[$key]['wpml_language'] = $this->polylang_data->lang_slug_to_wpml_format($val['pll_lang']);
 						}
 					}
 					update_option($widget->option_name, $option);

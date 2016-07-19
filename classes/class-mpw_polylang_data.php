@@ -81,6 +81,19 @@ class mpw_polylang_data {
 		return $polylang_languages_map;
 	}
 	
+	public function lang_slug_to_wpml_format($slug) {
+		$different = array(
+			'pt' => 'pt-pt',
+			'zh' => 'zh-hans'
+		);
+		
+		if (isset($different[$slug])) {
+			$slug = $different[$slug];
+		}
+		
+		return $slug;
+	}
+	
 	
 	public function delete_data() {
 		update_option('mpw_polylang_data_deleted', 1);
