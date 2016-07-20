@@ -79,7 +79,7 @@ class MPW_Htaccess_Check {
 	<p>
 		<input type="button" name="" value="<?php _e("Check .htaccess again", "migrate-polylang"); ?>" class="button" onClick="window.location.reload();">
 		<input type="button" name="" value="<?php _e("Dismiss this notice", "migrate-polylang"); ?>" class="button" id="mpw_htaccess_notice_dismiss">
-		
+		<a href="https://wpml.org/documentation/related-projects/migrate-polylang-wpml/" target="_blank"><?php _e("More information and other options", "migrate-polylang"); ?></a>
 	</p>
 </div>
 <?php	
