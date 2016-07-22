@@ -290,7 +290,9 @@ $text = "
 	
 	public function ajax_migrate_posts() {
 		if ($this->pre_check_ready_all()) {
-			$this->migrate_posts();
+			require_once 'classes/class-mpw_migrate_posts.php';
+			$mpw_migrate_posts = new mpw_migrate_posts($this->polylang_data);
+			$mpw_migrate_posts->migrate_posts();
 			$response = array(
 				'msg' => __("Posts, pages and custom post types has been migrated", 'migrate-polylang'),
 				'res' => 'ok'
@@ -369,76 +371,6 @@ $text = "
 				}
 			}
 		}
-	}
-
-	private function in_array_r($needle, $haystack, $strict = false) {
-	    foreach ($haystack as $item) {
-	        if (($strict ? $item === $needle : $item == $needle) || (is_array($item) && $this->in_array_r($needle, $item, $strict))) {
-	            return true;
-	        }
-	    }
-	    return false;
-	}
-
-	private function migrate_posts() {
-		global $wpdb;
-		
-		$get_languages = $this->polylang_data->get_languages();
-		$pll_post_translations = $this->polylang_data->get_post_translations();
-		$default_language = $this->polylang_data->lang_slug_to_wpml_format( $this->polylang_data->get_default_language_slug() );
-
-		if (!empty($get_languages) && is_array($get_languages)) {
-			foreach ($get_languages as $get_language) {
-				$query = $wpdb->prepare("SELECT p.ID AS post_id FROM {$wpdb->prefix}posts p INNER JOIN {$wpdb->prefix}term_relationships r ON r.object_id=p.ID WHERE r.term_taxonomy_id=%d", $get_language->term_taxonomy_id);
-				$results = $wpdb->get_results($query);
-				foreach ($results as $result){
-					$posts[$get_language->slug][] = $result->post_id;
-				}
-			} //end $get_languages for each
-		} //end if $get_languages
-			foreach ($pll_post_translations as $pll_post_translation) {
-				$relations[] = maybe_unserialize( $pll_post_translation->description );
-			} // end for each $pll_post_translations
-			foreach($posts as $code => $id ){
-				foreach($id as $value){
-					if($this->in_array_r($value, $relations) === FALSE){
-							$relations[] = array($code => $value, 'language_code' => $code);
-					}
-				}
-			}// end for each posts
-		  foreach ($relations as $relation) {
-				if($relation['language_code']){
-					$language_code = $relation['language_code'];
-				}else{
-					$language_code = $default_language;
-				}
-				$language_code = $this->polylang_data->lang_slug_to_wpml_format($language_code);
-				
-			$original_post_id = $relation[$language_code];
-			$post_type = get_post_type($original_post_id);
-			$post_type = apply_filters( 'wpml_element_type', $post_type );
-			do_action('wpml_set_element_language_details', array(
-					'element_id' => $original_post_id,
-					'element_type' => $post_type,
-					'trid' => false,
-					'language_code' => $language_code
-			));
-			$original_post_language_details = apply_filters('wpml_element_language_details', null, array(
-					'element_id' => $original_post_id,
-					'element_type' => $post_type
-			));
-			$trid = $original_post_language_details->trid;
-			unset($relation[$default_language]);
-				foreach ($relation as $language_code => $post_id) {
-					do_action('wpml_set_element_language_details', array(
-						'element_id' => $post_id,
-						'element_type' => $post_type,
-						'trid' => $trid,
-						'language_code' => $language_code,
-						'source_language_code' => $default_language
-					));
-				} // end foreach $relation
-			} //end foreach  $relations
 	}
 
 	private function migrate_taxonomies() {
