@@ -5,6 +5,8 @@
  */
 class mpw_polylang_data {
 	
+	private static $terms;
+	
 	public function __construct() {
 		
 	}
@@ -26,14 +28,19 @@ class mpw_polylang_data {
 	}
 	
 	private function get_terms($tax) {
-		global $wpdb;
 		
-		register_taxonomy($tax, null);
-		$table = $wpdb->prefix . "icl_translations";
-		$wpdb->delete($table, array('element_type' => 'tax_'.$tax));
-		$terms = get_terms($tax, array( 'hide_empty' => false));
+		if (!isset($this->terms[$tax])) {
+			global $wpdb;
 		
-		return $terms;
+			register_taxonomy($tax, null);
+			$table = $wpdb->prefix . "icl_translations";
+			$wpdb->delete($table, array('element_type' => 'tax_'.$tax));
+			$terms = get_terms($tax, array( 'hide_empty' => false));
+			
+			$this->terms[$tax] = $terms;
+		}
+				
+		return $this->terms[$tax];
 	}
 	
 	public function get_additional_languages_names() {
