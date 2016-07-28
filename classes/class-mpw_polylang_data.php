@@ -89,11 +89,22 @@ class mpw_polylang_data {
 	}
 	
 	public function lang_slug_to_wpml_format($slug) {
+
 		$different = array(
 			'pt' => 'pt-pt',
 			'zh' => 'zh-hans'
 		);
-		
+
+		$languages = $this->get_languages();
+
+		foreach ($languages as $language) {
+			if ($language->slug == 'pt') {
+				$pt_language_details = maybe_unserialize($language->description);
+				if (isset($pt_language_details['locale']) && $pt_language_details['locale'] == "pt_BR") {
+					$different['pt'] = 'pt-br';
+				}
+			}
+		}
 		if (isset($different[$slug])) {
 			$slug = $different[$slug];
 		}

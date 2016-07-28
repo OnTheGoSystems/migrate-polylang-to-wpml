@@ -25,3 +25,9 @@ Import multilingual data from Polylang to WPML
 # Support and feedback
 - please report any issue or feature request at [WPML forum ](https://wpml.org/forums/forum/english-support/)
 - please check [Wiki page](https://github.com/OnTheGoSystems/migrate-polylang-to-wpml/wiki) for known issues
+
+# Changelog
+## 0.2
+- fixed migration of Chinese languages and Portuguese (pt-pt and pt-br) languages
+## 0.1
+- initial release
