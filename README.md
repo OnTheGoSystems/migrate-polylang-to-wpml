@@ -27,7 +27,9 @@ Import multilingual data from Polylang to WPML
 - please check [Wiki page](https://github.com/OnTheGoSystems/migrate-polylang-to-wpml/wiki) for known issues
 
 # Changelog
+
 ## 0.2
 - fixed migration of Chinese languages and Portuguese (pt-pt and pt-br) languages
+
 ## 0.1
 - initial release
