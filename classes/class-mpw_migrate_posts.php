@@ -107,7 +107,9 @@ class mpw_migrate_posts {
 	}
 	
 	private function set_other_posts_language_details($relation, $default_language_code, $post_type, $trid) {
-		unset($relation[$default_language_code['polylang']]);
+		if (isset($relation[$default_language_code['polylang']])) { 
+			unset($relation[$default_language_code['polylang']]);
+		}
 			
 		foreach ($relation as $next_post_language_code => $post_id) {
 
