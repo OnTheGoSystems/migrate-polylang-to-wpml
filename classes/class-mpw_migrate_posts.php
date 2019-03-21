@@ -86,7 +86,7 @@ class mpw_migrate_posts {
 	}
 
 	private function set_original_post_language_details($relation, $default_language_code) {
-		$original_post_id = $relation[$default_language_code['polylang']];
+		$original_post_id = isset($relation['sync']) ? $relation['sync'][$default_language_code['polylang']] : $relation[$default_language_code['polylang']];
 		$post_type = apply_filters( 'wpml_element_type', get_post_type($original_post_id) );
 
 		do_action('wpml_set_element_language_details', array(
