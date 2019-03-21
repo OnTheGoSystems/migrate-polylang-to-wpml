@@ -30,6 +30,7 @@ Import multilingual data from Polylang to WPML
 
 ## 0.2
 - fixed migration of Chinese languages and Portuguese (pt-pt and pt-br) languages
+- fixed case when the user has set synchronisation options (comp-3271)
 
 ## 0.1
 - initial release
