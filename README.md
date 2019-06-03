@@ -28,6 +28,9 @@ Import multilingual data from Polylang to WPML
 
 # Changelog
 
+## 0.3
+- resolved issue with migration stopping on nginx server
+
 ## 0.2
 - fixed migration of Chinese languages and Portuguese (pt-pt and pt-br) languages
 - fixed case when the user has set synchronisation options (comp-3271)
