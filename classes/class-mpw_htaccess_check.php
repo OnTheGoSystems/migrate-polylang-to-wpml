@@ -48,17 +48,18 @@ class MPW_Htaccess_Check {
 		$return = false;
 		require_once(ABSPATH . 'wp-admin/includes/file.php');
 		$path = get_home_path();
-		
+
 		$file_path = $path . ".htaccess";
-		
-		$htaccess_file = fopen($file_path, "r");
-		
-		if ($htaccess_file) {
-			$file_content = fread($htaccess_file, filesize($file_path));
-			$return = (strpos($file_content, $this->rewrite_entry) !== false);
-			
+
+		if (file_exists($file_path)) {
+			$htaccess_file = fopen($file_path, "r");
+
+			if ($htaccess_file) {
+				$file_content = fread($htaccess_file, filesize($file_path));
+				$return = (strpos($file_content, $this->rewrite_entry) !== false);
+			}
 		}
-		
+
 		return $return;
 	}
 	
