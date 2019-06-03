@@ -5,7 +5,7 @@ Plugin Name: Migrate Polylang to WPML
 Description: Import multilingual data from Polylang to WPML
 Author: Konrad Karpieszuk, Harshad Mane
 Plugin uri: https://wpml.org
-Version: 0.2
+Version: 0.3-dev
  */
 
 class Migrate_Polylang_To_WPML {
