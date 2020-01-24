@@ -29,7 +29,7 @@ class mpw_polylang_data {
 	
 	private function get_terms($tax) {
 		
-		if (!isset($this->terms[$tax])) {
+		if (!isset(self::$terms[$tax])) {
 			global $wpdb;
 		
 			register_taxonomy($tax, null);
@@ -37,10 +37,10 @@ class mpw_polylang_data {
 			$wpdb->delete($table, array('element_type' => 'tax_'.$tax));
 			$terms = get_terms($tax, array( 'hide_empty' => false));
 			
-			$this->terms[$tax] = $terms;
+			self::$terms[$tax] = $terms;
 		}
 				
-		return $this->terms[$tax];
+		return self::$terms[$tax];
 	}
 	
 	public function get_additional_languages_names() {
