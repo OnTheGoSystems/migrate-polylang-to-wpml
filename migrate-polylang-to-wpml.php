@@ -395,13 +395,10 @@ $text = "
 
 					$original_term = $this->get_term_by_term_id( $original_term_id );
 
-					if (is_object($original_term)) {
-					    $original_term_taxonomy_id = $original_term->term_taxonomy_id;
-					}
+					if ( isset( $original_term->taxonomy, $original_term->term_taxonomy_id ) ) {
+						$original_term_taxonomy_id = $original_term->term_taxonomy_id;
 
-					if (isset($original_term->taxonomy)) {
 						$taxonomy = $original_term->taxonomy;
-
 						$taxonomy = apply_filters( 'wpml_element_type', $taxonomy );
 
 						try {
