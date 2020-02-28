@@ -29,7 +29,7 @@ Import multilingual data from Polylang to WPML
 # Changelog
 
 ## 0.4
-- fixed issue with not terminating impot when importing terms
+- fixed issue with not terminating import when importing terms
 
 ## 0.3
 - resolved issue with migration stopping on nginx server
