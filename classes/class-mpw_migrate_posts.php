@@ -41,7 +41,7 @@ class mpw_migrate_posts {
 				continue;
 			}
 
-			$this->set_other_posts_language_details($relation, $default_language_code, $originalPostElementType, $trid);
+			$this->set_other_posts_language_details( $relation, $default_language_code, $originalPostElementType, $trid, $originalPostId );
 		}
 	}
 
@@ -120,13 +120,7 @@ class mpw_migrate_posts {
 	private function getOriginalPostId( $relation, $defaultLanguageCode ) {
 		$defaultPolylangCode = $defaultLanguageCode['polylang'];
 
-		if (
-			array_key_exists( 'sync', $relation )
-			&& is_array( $relation['sync'] )
-			&& array_key_exists( $defaultPolylangCode, $relation['sync'] )
-		) {
-			return $relation['sync'][ $defaultPolylangCode ];
-		} elseif ( array_key_exists( $defaultPolylangCode, $relation ) ) {
+		if ( array_key_exists( $defaultPolylangCode, $relation ) ) {
 			return $relation[ $defaultPolylangCode ];
 		}
 
@@ -165,11 +159,18 @@ class mpw_migrate_posts {
 	 * @param array  $default_language_code
 	 * @param string $post_type
 	 * @param string $trid
+	 * @param string $originalPostId
 	 */
-	private function set_other_posts_language_details($relation, $default_language_code, $post_type, $trid) {
+	private function set_other_posts_language_details( $relation, $default_language_code, $post_type, $trid, $originalPostId ) {
+		/** @var \SitePress $sitepress */
+		global $sitepress;
+
+		$sync = $relation['sync'] ?? [];
+
 		if ( array_key_exists( $default_language_code['polylang'], $relation ) ) {
 			unset( $relation[ $default_language_code['polylang'] ] );
 		}
+
 		if ( array_key_exists( 'sync', $relation ) ) {
 			unset( $relation['sync'] );
 		}
@@ -185,6 +186,12 @@ class mpw_migrate_posts {
 				'language_code'        => $next_post_language_code_wpml_format,
 				'source_language_code' => $default_language_code['wpml']
 			));
+		}
+
+		foreach ( $sync as $targetLang => $sourceLang ) {
+			if ( $targetLang !== $sourceLang ) {
+				$sitepress->make_duplicate( $originalPostId, $targetLang );
+			}
 		}
 	}
 
