@@ -28,15 +28,21 @@ Import multilingual data from Polylang to WPML
 
 # Changelog
 
+## 0.5.0
+- Automatically set the translation preference to "translate" for translated custom post types.
+- Added the support for duplicated (synced) posts.
+- Fixed a fatal error "Uncaught TypeError: Cannot access offset of type string on string".
+- Fixed several PHP warnings.
+
 ## 0.4
-- fixed issue with not terminating import when importing terms
+- Fixed an issue with not terminating import when importing terms.
 
 ## 0.3
-- resolved issue with migration stopping on nginx server
+- Resolved an issue with migration stopping on nginx server.
 
 ## 0.2
-- fixed migration of Chinese languages and Portuguese (pt-pt and pt-br) languages
-- fixed case when the user has set synchronisation options (comp-3271)
+- Fixed the migration of Chinese languages and Portuguese (pt-pt and pt-br) languages.
+- Fixed a case when the user has set synchronisation options (comp-3271).
 
 ## 0.1
-- initial release
+- Initial release.
