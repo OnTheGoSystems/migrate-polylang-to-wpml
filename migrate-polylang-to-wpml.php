@@ -5,7 +5,7 @@ Plugin Name: Migrate Polylang to WPML
 Description: Import multilingual data from Polylang to WPML | <a href="https://wpml.org/documentation/related-projects/migrate-polylang-wpml/">Documentation</a>
 Author: Konrad Karpieszuk, Harshad Mane
 Plugin uri: https://wpml.org
-Version: 0.4
+Version: 0.5.0
  */
 
 class Migrate_Polylang_To_WPML {
@@ -13,35 +13,35 @@ class Migrate_Polylang_To_WPML {
 	private $mpw_htaccess_check;
 
 	public function __construct() {
-		
+
 		require_once('classes/class-mpw_polylang_data.php');
-		$this->polylang_data = new mpw_polylang_data(); 
-		
+		$this->polylang_data = new mpw_polylang_data();
+
 		require_once 'classes/class-mpw_htaccess_check.php';
-		$this->mpw_htaccess_check = new MPW_Htaccess_Check($this->polylang_data);		
+		$this->mpw_htaccess_check = new MPW_Htaccess_Check($this->polylang_data);
 
 		add_action('admin_menu', array($this, 'admin_menu'));
 
 		add_action( 'admin_enqueue_scripts', array($this, 'enqueue_scripts') );
-		
+
 		add_action( 'wp_ajax_mpw_migrate_languages', array($this, 'ajax_migrate_languages') );
 		add_action( 'wp_ajax_mpw_migrate_posts', array($this, 'ajax_migrate_posts') );
 		add_action( 'wp_ajax_mpw_migrate_taxonomies', array($this, 'ajax_migrate_taxonomies') );
 		add_action( 'wp_ajax_mpw_migrate_strings', array($this, 'ajax_migrate_strings') );
 		add_action( 'wp_ajax_mpw_migrate_widgets', array($this, 'ajax_migrate_widgets') );
-		
+
 		add_action( 'wp_ajax_mpw_delete_polylang_data', array($this, 'ajax_delete_polylang_data') );
-		
+
 		add_action('admin_notices', array($this, 'guide_admin_notices'));
-		
+
 	}
 
 	public function enqueue_scripts() {
 		if ($this->pre_check_ready_all()) {
 			wp_register_script('migrate-enabling-script', plugins_url('scripts/enabling.js', __FILE__), array('jquery'), '', true);
 			wp_enqueue_script('migrate-enabling-script');
-			
-			
+
+
 			wp_register_script('migrate-ajax',  plugins_url('scripts/ajax.js', __FILE__), array('jquery'), '', true);
 			$ajax_strings_translations = array(
 				'mig_start' => __("Migration started, please don't close this window...", 'migrate-polylang'),
@@ -52,54 +52,54 @@ class Migrate_Polylang_To_WPML {
 				'widg_start' => __("Localizing widgets (only if WPML Widgets is activated)...", 'migrate-polylang'),
 				'mig_done' => __("Migration done! Please check if everything is correct and deactivate or unistall Migrate Polylang to WPML plugin", 'migrate-polylang'),
 				'mig_again_label' => __("Migrate again", "migrate-polylang"),
-				
+
 				'delete_confirm' => __("Warning: after deleting Polylang data you will not be able to do this migration again or return to Polylang without setting up everything from beginning.\nAre you sure you want to do this?", 'migrate-polylang'),
 				'del_start' => __("Deleting Polylang data...", 'migrate-polylang'),
 			);
 			wp_localize_script('migrate-ajax', 'mpw_ajax_str', $ajax_strings_translations);
 			wp_enqueue_script('migrate-ajax');
 		}
-		
+
 		if (is_admin() && !$this->pre_check_wizard_complete()) {
 			wp_register_script('migrate-tooltips',  plugins_url('tooltips/js/helpcursor-min.js', __FILE__), array('jquery'), '', true);
 			wp_enqueue_script('migrate-tooltips');
-			
+
 			wp_register_script('migrate-tooltips-uses',  plugins_url('scripts/tooltips.js', __FILE__), array('migrate-tooltips'), '', true);
-			
+
 			$tooltips_texts = array(
 				'before_mig' => __('Before migrating Polylang, please finish WPML wizard', 'migrate-polylang'),
 				'default_language' => sprintf(__('With Polylang your default language was %s', 'migrate-polylang'), $this->polylang_data->get_default_language_name()),
-				'additional_languages' => sprintf(__('Polylang additional languages: %s', 'migrate-polylang'), 
+				'additional_languages' => sprintf(__('Polylang additional languages: %s', 'migrate-polylang'),
 						join(", ", $this->polylang_data->get_additional_languages_names()))
 			);
 			wp_localize_script('migrate-tooltips-uses', 'tooltips_texts', $tooltips_texts);
 			wp_enqueue_script('migrate-tooltips-uses');
-			
+
 			wp_register_style('migrate-tooltips-css',  plugins_url('tooltips/css/helpcursor.css', __FILE__));
 			wp_enqueue_style('migrate-tooltips-css');
 		}
-		
+
 		if (is_admin()) {
 			wp_register_script('migrate-htaccess',  plugins_url('scripts/htaccess.js', __FILE__), array('jquery'), '', true);
 			wp_enqueue_script('migrate-htaccess');
 		}
 	}
-	
+
 	public function guide_admin_notices() {
 		if (!$this->pre_check_polylang()) {
 			return $this->guide_notice_disable_polylang();
 		}
-		
+
 		if (!$this->pre_check_wpml()) {
 			return $this->guide_notice_activate_wpml();
 		}
-		
+
 		if ($this->pre_check_wizard_complete() && !$this->migration_page_displayed() && !get_option('mpw_migration_done', false)) {
 			return $this->guide_notice_goto_migration_page();
 		}
-		
+
 	}
-	
+
 	private function guide_notice_disable_polylang() {
 ?>
 <div class="notice notice-error">
@@ -109,7 +109,7 @@ class Migrate_Polylang_To_WPML {
 </div>
 <?php
 	}
-	
+
 	private function guide_notice_activate_wpml() {
 ?>
 <div class="notice notice-error">
@@ -117,15 +117,15 @@ class Migrate_Polylang_To_WPML {
 		<?php _e("If you want to import Polylang data, please activate WPML Multilingual CMS/Blog first.", "migrate-polylang"); ?>
 	</p>
 </div>
-<?php	
+<?php
 	}
-	
+
 	private function migration_page_displayed() {
 		global $pagenow, $hook_suffix;
-		
+
 		return isset($pagenow) && $pagenow == 'tools.php' && isset($hook_suffix) && $hook_suffix == "tools_page_polylang-importer";
 	}
-	
+
 	private function guide_notice_goto_migration_page() {
 ?>
 <div class="notice notice-success is-dismissible">
@@ -133,13 +133,13 @@ class Migrate_Polylang_To_WPML {
 		<?php printf(__("You are ready to start migration from Polylang to WPML. Go to <a href='%s'>Tools &gt; Migrate from Polylang to WPML</a> page.", "migrate-polylang"), $this->migration_page_url()); ?>
 	</p>
 </div>
-<?php			
+<?php
 	}
-	
+
 	private function migration_page_url() {
 		return get_admin_url(null, "tools.php?page=polylang-importer");
 	}
-	
+
 	public function admin_menu() {
 
 		$title = __("Migrate from Polylang to WPML", 'migrate-polylang');
@@ -151,7 +151,7 @@ class Migrate_Polylang_To_WPML {
 		?>
 <div class="wrap">
 	<h2><?php _e('Migrate data from Polylang to WPML', 'migrate-polylang'); ?></h2>
-<?php 
+<?php
 
 echo $this->introduction_text();
 
@@ -165,7 +165,7 @@ if ($this->pre_check_ready_all()) :
 		$hide_delete_button = "display: none;";
 	}
 
-	
+
 ?>
 	<form method="post" action="tools.php?page=polylang-importer">
 		<label for='migrate_polylang_to_wpml_confirm_db_backup'>
@@ -182,11 +182,11 @@ if ($this->pre_check_ready_all()) :
 		<div id="remove_polylang_data_part" style="<?php echo $hide_delete_button; ?>">
 			<h3><?php _e("Optional: erase Polylang data", "migrate-polylang"); ?></h3>
 			<label for="remove_polylang_data_accept_1">
-				<input type="checkbox" class="remove_polylang_data_accept" name="remove_polylang_data_accept_1" id="remove_polylang_data_accept_1" value="1"> 
+				<input type="checkbox" class="remove_polylang_data_accept" name="remove_polylang_data_accept_1" id="remove_polylang_data_accept_1" value="1">
 					<?php _e("I understand that this will remove all data by Polylang. There is no undo to restore the data.", "migrate-polylang"); ?> <br>
 			</label>
 			<label for="remove_polylang_data_accept_2">
-				<input type="checkbox" class="remove_polylang_data_accept" name="remove_polylang_data_accept_2" id="remove_polylang_data_accept_2" value="1"> 
+				<input type="checkbox" class="remove_polylang_data_accept" name="remove_polylang_data_accept_2" id="remove_polylang_data_accept_2" value="1">
 					<?php _e("I verified the migration and I see that my site displays fine with WPML. ", "migrate-polylang"); ?> <br>
 			</label>
 		<input type="submit"
@@ -210,7 +210,7 @@ endif; ?>
 </div>
 		<?php
 	}
-	
+
 	private function introduction_text() {
 	$text = "<h3>".__("During migration this plugin will:", "migrate-polylang")."</h3>";
 	$text .= "<ul>";
@@ -220,7 +220,7 @@ endif; ?>
 	$text .= "<li><strong>".__("Migrate admin strings (only if you are using WPML String Translation).", "migrate-polylang")."</strong> ".__("Plugin will try to find if you have translated any admin string in Polylang and it will try to migrate this translation to WPML. Bear in mind that this probably will not migrate every string - this is because Polylang is handling string translation in much different way than WPML")."</li>";
 	$text .= "<li><strong>".__("Migrate widgets (only if you are using <a href='https://wordpress.org/plugins/wpml-widgets/' target='_blank'>WPML Widgets</a>.", "migrate-polylang")."</strong> ".__("If you have created some WordPress widgets while using Polylang and you've set language for them, this plugin will migrate it as well.")."</li>";
 	$text .= "</ul>";
-		
+
 	return $text;
 	}
 
@@ -248,7 +248,7 @@ $text = "
 
 	return $text;
 	}
-	
+
 	private function polylang_data_deleted() {
 		return get_option('mpw_polylang_data_deleted', false);
 	}
@@ -264,11 +264,11 @@ $text = "
 	private function pre_check_wizard_complete() {
 		return apply_filters( 'wpml_setting', false, 'setup_complete' );
 	}
-	
+
 	private function pre_check_wpml_widgets() {
 		return class_exists('WPML_Widgets');
 	}
-	
+
 	private function pre_check_wpml_st() {
 		return defined('WPML_ST_VERSION');
 	}
@@ -276,7 +276,7 @@ $text = "
 	private function pre_check_ready_all() {
 		return !$this->polylang_data_deleted() && $this->pre_check_polylang() and $this->pre_check_wpml() and $this->pre_check_wizard_complete();
 	}
-	
+
 	public function ajax_migrate_languages() {
 		if ($this->pre_check_ready_all()) {
 			$this->migrate_languages();
@@ -287,7 +287,7 @@ $text = "
 			wp_send_json_success($response);
 		}
 	}
-	
+
 	public function ajax_migrate_posts() {
 		if ($this->pre_check_ready_all()) {
 			require_once 'classes/class-mpw_migrate_posts.php';
@@ -300,7 +300,7 @@ $text = "
 			wp_send_json_success($response);
 		}
 	}
-	
+
 	public function ajax_migrate_taxonomies() {
 		if ($this->pre_check_ready_all()) {
 			$this->migrate_taxonomies();
@@ -311,7 +311,7 @@ $text = "
 			wp_send_json_success($response);
 		}
 	}
-	
+
 	public function ajax_migrate_strings() {
 		if ($this->pre_check_ready_all() && $this->pre_check_wpml_st()) {
 			$this->migrate_strings();
@@ -327,7 +327,7 @@ $text = "
 		}
 		wp_send_json_success($response);
 	}
-	
+
 	public function ajax_migrate_widgets() {
 		if ($this->pre_check_ready_all() && $this->pre_check_wpml_widgets()) {
 			$this->migrate_widgets();
@@ -344,7 +344,7 @@ $text = "
 		update_option('mpw_migration_done', 1);
 		wp_send_json_success($response);
 	}
-	
+
 	public function ajax_delete_polylang_data() {
 		$this->polylang_data->delete_data();
 		$response = array(
@@ -389,7 +389,7 @@ $text = "
 					$language_code = key($relation);
 				}
 				$language_code = $this->polylang_data->lang_slug_to_wpml_format($language_code);
-				
+
 				if (isset($relation[$language_code])) {
 					$original_term_id = $relation[$language_code];
 
@@ -478,10 +478,10 @@ $text = "
 
 	private function migrate_strings() {
 		$polylang_languages_map = $this->polylang_data->get_languages_map();
-		
+
 		$wpml_string_translations = $this->get_wpml_string_translations();
 
-		
+
 		$polylang_strings_array = $this->get_polylang_strings_array($polylang_languages_map);
 
 		if ($polylang_strings_array) {
@@ -490,7 +490,7 @@ $text = "
 				$this->migrate_string_groups($lang_id, $string_groups, $polylang_languages_map, $wpml_string_translations);
 			}
 		}
-		
+
 	}
 
 	private function get_wpml_string_translations() {
@@ -518,7 +518,7 @@ $text = "
 		global $wpdb;
 
 		$polylang_strings_array = null;
-		
+
 		foreach(array_keys($polylang_languages_map) as $lang_id) {
 			$post_with_polylang_strings = "SELECT post_content FROM ".$wpdb->prefix."posts where post_type = 'polylang_mo'  AND post_title=%s order by ID desc limit 1";
 
@@ -530,23 +530,23 @@ $text = "
 			}
 		}
 
-		
+
 
 		return $polylang_strings_array;
 	}
 
 	private function migrate_string_groups($lang_id, $string_groups, $polylang_languages_map, $wpml_string_translations) {
-		
+
 		$indexed_polylang_string_group = array();
-		
+
 		$default_language = $this->polylang_data->get_default_language_slug();
-		
+
 		$to_language = $polylang_languages_map[$lang_id];
-		
+
 		$default_language_wpml_format = $this->polylang_data->lang_slug_to_wpml_format($default_language);
-		
+
 		$to_language_wpml_format = $this->polylang_data->lang_slug_to_wpml_format($to_language);
-		
+
 		foreach($string_groups as $group) {
 			if (isset($wpml_string_translations[$default_language][ $group[0] ])) {
 				icl_add_string_translation(
@@ -576,22 +576,22 @@ $text = "
 					$group[0],
 					ICL_STRING_TRANSLATION_COMPLETE
 					);
-			} 
+			}
 		}
 	}
-	
+
 	private function migrate_widgets() {
 		global $wpdb;
-		
+
 		$options_table = $wpdb->prefix . "options";
-		
+
 		$all_widgets_query = "SELECT option_name FROM $options_table WHERE option_name LIKE 'widget_%'";
-		
+
 		$all_widgets = $wpdb->get_results($all_widgets_query);
-		
+
 		if ($all_widgets) {
 			foreach ($all_widgets as $widget) {
-				$option = get_option($widget->option_name); 
+				$option = get_option($widget->option_name);
 				if ($option && is_array($option)) {
 					foreach ($option as $key => $val) {
 						if (is_numeric($key) && isset($val['pll_lang'])) {
@@ -603,9 +603,9 @@ $text = "
 			}
 		}
 	}
-	
-	
-	
+
+
+
 }
 
 $migrate_polylang_to_wpml = new Migrate_Polylang_To_WPML();
