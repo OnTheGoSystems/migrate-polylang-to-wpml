@@ -14,24 +14,28 @@ class MPW_Htaccess_Check {
 	
 	public function __construct($polylang_data) {
 		$this->polylang_data = $polylang_data;
-		
-		$this->set_urls();
-		
+
 		add_action('init', array($this, 'run'));
-		
-		
 	}
-	
+
 	private function set_urls() {
 		$this->site_url = get_bloginfo('url');
 		$this->lang_slug = $this->polylang_data->get_default_language_slug();
 		$this->rewrite_entry = "RedirectMatch 301 /{$this->lang_slug}/$ {$this->site_url}/index.php";
 	}
-	
+
 	public function run() {
+		// Built here rather than in the constructor: the constructor runs while the plugin file
+		// is still being included, which is too early to be reading options or site metadata.
+		$this->set_urls();
+
+		if ('' === $this->lang_slug) {
+			return;
+		}
+
 		if ($this->should_display()) {
 			$this->display_notice();
-		};
+		}
 	}
 	
 	private function should_display() {
@@ -49,22 +53,23 @@ class MPW_Htaccess_Check {
 	
 	
 	private function htaccess_edited() {
-		$return = false;
 		require_once(ABSPATH . 'wp-admin/includes/file.php');
-		$path = get_home_path();
 
-		$file_path = $path . ".htaccess";
+		$file_path = get_home_path() . ".htaccess";
 
-		if (file_exists($file_path)) {
-			$htaccess_file = fopen($file_path, "r");
-
-			if ($htaccess_file) {
-				$file_content = fread($htaccess_file, filesize($file_path));
-				$return = (strpos($file_content, $this->rewrite_entry) !== false);
-			}
+		if (!is_readable($file_path)) {
+			return false;
 		}
 
-		return $return;
+		// The previous fopen()/fread() pair leaked the handle and, on an empty .htaccess,
+		// called fread() with a length of 0 — a ValueError on PHP 8.
+		$file_content = file_get_contents($file_path);
+
+		if (false === $file_content || '' === $file_content) {
+			return false;
+		}
+
+		return false !== strpos($file_content, $this->rewrite_entry);
 	}
 	
 	private function display_notice() {
