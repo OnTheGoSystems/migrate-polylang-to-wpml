@@ -3,6 +3,9 @@
  *
  * @author konrad
  */
+
+defined('ABSPATH') || exit;
+
 class mpw_polylang_data {
 	
 	private static $terms;

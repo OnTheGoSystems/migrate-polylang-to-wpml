@@ -1,5 +1,7 @@
 <?php
 
+defined('ABSPATH') || exit;
+
 class mpw_migrate_posts {
 
 	private $polylang_data;
