@@ -439,17 +439,26 @@ $text = "
 
 		$pll_languages = $this->polylang_data->get_languages();
 
-		if (!empty($pll_languages) && is_array($pll_languages)) {
-			foreach ($pll_languages as $pll_language) {
-				if (isset($pll_language->slug)) {
-					$slug = $this->polylang_data->lang_slug_to_wpml_format($pll_language->slug);
-					$wpdb->update(
-							$wpdb->prefix . 'icl_languages',
-							array('active' => 1),
-							array('code' => $slug)
-							);
-				}
+		if (empty($pll_languages) || !is_array($pll_languages)) {
+			return;
+		}
+
+		foreach ($pll_languages as $pll_language) {
+			if (!isset($pll_language->slug)) {
+				continue;
 			}
+
+			$code = $this->polylang_data->lang_slug_to_wpml_format($pll_language->slug);
+
+			if ('' === $code) {
+				continue;
+			}
+
+			$wpdb->update(
+				$wpdb->prefix . 'icl_languages',
+				array('active' => 1),
+				array('code' => $code)
+			);
 		}
 	}
 
