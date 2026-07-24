@@ -444,92 +444,115 @@ $text = "
 		}
 	}
 
+	/**
+	 * Links every Polylang term translation group into a WPML translation group.
+	 *
+	 * Polylang keys a relation by its own language *slugs*, so every array lookup here uses a
+	 * slug. Slugs are converted to WPML language codes only at the point of handing them to WPML.
+	 * Mixing the two is what made this method skip Portuguese and Chinese groups entirely.
+	 */
 	private function migrate_taxonomies() {
-		global $wpdb;
-
 		$pll_term_translations = $this->polylang_data->get_term_translations();
-		$default_language = $this->polylang_data->lang_slug_to_wpml_format( $this->polylang_data->get_default_language_slug() );
 
-		if (!empty($pll_term_translations) && is_array($pll_term_translations)) {
-			foreach ($pll_term_translations as $pll_term_translation) {
-				$relation = maybe_unserialize( $pll_term_translation->description );
+		if (empty($pll_term_translations) || !is_array($pll_term_translations)) {
+			return;
+		}
 
-				if(count($relation) > 1 ){
-					$language_code = $default_language;
-				}else{
-					$language_code = key($relation);
-				}
-				$language_code = $this->polylang_data->lang_slug_to_wpml_format($language_code);
+		$default_language_slug = $this->polylang_data->get_default_language_slug();
 
-				if (isset($relation[$language_code])) {
-					$original_term_id = $relation[$language_code];
+		foreach ($pll_term_translations as $pll_term_translation) {
+			if (!isset($pll_term_translation->description)) {
+				continue;
+			}
 
-					$original_term = $this->get_term_by_term_id( $original_term_id );
+			$relation = maybe_unserialize($pll_term_translation->description);
 
-					if ( isset( $original_term->taxonomy, $original_term->term_taxonomy_id ) ) {
-						$original_term_taxonomy_id = $original_term->term_taxonomy_id;
+			// Polylang can leave behind a corrupted or partially written description.
+			if (!is_array($relation)) {
+				continue;
+			}
 
-						$taxonomy = $original_term->taxonomy;
-						$taxonomy = apply_filters( 'wpml_element_type', $taxonomy );
+			unset($relation['sync']);
 
-						try {
-							do_action('wpml_set_element_language_details', array(
-								'element_id' => $original_term_taxonomy_id,
-								'element_type' => $taxonomy,
-								'trid' => false,
-								'language_code' => $language_code
-							));
-						} catch (Exception $e) {
-							echo esc_html($e->getMessage());
-							echo "<br>Setting original term language details failed<br>";
-							printf('element_id was %s, element_type was %s, language_code was %s',
-									esc_html($original_term_taxonomy_id),
-									esc_html($taxonomy),
-									esc_html($default_language));
-							exit();
-						}
+			$original_slug = $this->pick_original_language_slug($relation, $default_language_slug);
 
+			if (null === $original_slug) {
+				continue;
+			}
 
-						$original_term_language_details = apply_filters('wpml_element_language_details', null, array(
-							'element_id' => $original_term_taxonomy_id,
-							'element_type' => $taxonomy
-						));
+			$original_term = $this->get_term_by_term_id($relation[$original_slug]);
 
-						$trid = $original_term_language_details->trid;
+			if (!isset($original_term->taxonomy, $original_term->term_taxonomy_id)) {
+				continue;
+			}
 
-						unset($relation[$default_language]);
+			$element_type = apply_filters('wpml_element_type', $original_term->taxonomy);
+			$original_language_code = $this->polylang_data->lang_slug_to_wpml_format($original_slug);
 
-						foreach ($relation as $language_code => $term_id) {
-							$translated_term = $this->get_term_by_term_id( $term_id );
+			do_action('wpml_set_element_language_details', array(
+				'element_id' => $original_term->term_taxonomy_id,
+				'element_type' => $element_type,
+				'trid' => false,
+				'language_code' => $original_language_code
+			));
 
-							$translated_term_taxonomy_id = $translated_term->term_taxonomy_id;
+			$original_language_details = apply_filters('wpml_element_language_details', null, array(
+				'element_id' => $original_term->term_taxonomy_id,
+				'element_type' => $element_type
+			));
 
-							try {
-								do_action('wpml_set_element_language_details', array(
-									'element_id' => $translated_term_taxonomy_id,
-									'element_type' => $taxonomy,
-									'trid' => $trid,
-									'language_code' => $language_code,
-									'source_language_code' => $default_language
-								));
-							} catch (Exception $e) {
-								echo esc_html($e->getMessage());
-								echo "<br>Setting translated term language details failed<br>";
-								printf('element_id was %s, element_type was %s, trid %s, language_code was %s, original language %s',
-										esc_html($translated_term_taxonomy_id),
-										esc_html($taxonomy),
-										esc_html($trid),
-										esc_html($language_code),
-										esc_html($default_language));
-								exit();
-							}
-						}
-					}
+			// WPML returns null when it refuses the element, for instance when the taxonomy has
+			// not been set translatable. Nothing can be linked to it, so move on.
+			if (!isset($original_language_details->trid)) {
+				continue;
+			}
 
+			$trid = $original_language_details->trid;
+
+			unset($relation[$original_slug]);
+
+			foreach ($relation as $translation_slug => $term_id) {
+				$translated_term = $this->get_term_by_term_id($term_id);
+
+				if (!isset($translated_term->term_taxonomy_id)) {
+					continue;
 				}
 
+				do_action('wpml_set_element_language_details', array(
+					'element_id' => $translated_term->term_taxonomy_id,
+					'element_type' => $element_type,
+					'trid' => $trid,
+					'language_code' => $this->polylang_data->lang_slug_to_wpml_format($translation_slug),
+					'source_language_code' => $original_language_code
+				));
 			}
 		}
+	}
+
+	/**
+	 * Chooses which entry of a Polylang translation group acts as the original.
+	 *
+	 * The site's default language wins when it is present. Groups that only exist in secondary
+	 * languages used to be dropped on the floor, leaving those terms with no language at all in
+	 * WPML; fall back to the first usable entry so they migrate as a linked group instead.
+	 *
+	 * @param array  $relation              Translation group, keyed by Polylang language slug.
+	 * @param string $default_language_slug Polylang's default language slug.
+	 *
+	 * @return string|null A language slug, or null when the group holds nothing usable.
+	 */
+	private function pick_original_language_slug($relation, $default_language_slug) {
+		if ('' !== $default_language_slug && !empty($relation[$default_language_slug])) {
+			return $default_language_slug;
+		}
+
+		foreach ($relation as $slug => $object_id) {
+			if (is_string($slug) && !empty($object_id)) {
+				return $slug;
+			}
+		}
+
+		return null;
 	}
 
 	private function get_term_by_term_id($id) {
