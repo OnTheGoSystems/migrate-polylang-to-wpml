@@ -120,7 +120,7 @@ class Migrate_Polylang_To_WPML {
 ?>
 <div class="notice notice-error">
 	<p>
-		<?php _e("Before using WPML, you have to deactivate Polylang first!", "migrate-polylang"); ?>
+		<?php esc_html_e("Before using WPML, you have to deactivate Polylang first!", "migrate-polylang"); ?>
 	</p>
 </div>
 <?php
@@ -130,7 +130,7 @@ class Migrate_Polylang_To_WPML {
 ?>
 <div class="notice notice-error">
 	<p>
-		<?php _e("If you want to import Polylang data, please activate WPML Multilingual CMS/Blog first.", "migrate-polylang"); ?>
+		<?php esc_html_e("If you want to import Polylang data, please activate WPML Multilingual CMS/Blog first.", "migrate-polylang"); ?>
 	</p>
 </div>
 <?php
@@ -146,7 +146,10 @@ class Migrate_Polylang_To_WPML {
 ?>
 <div class="notice notice-success is-dismissible">
 	<p>
-		<?php printf(__("You are ready to start migration from Polylang to WPML. Go to <a href='%s'>Tools &gt; Migrate from Polylang to WPML</a> page.", "migrate-polylang"), $this->migration_page_url()); ?>
+		<?php printf(
+			wp_kses_post(__("You are ready to start migration from Polylang to WPML. Go to <a href='%s'>Tools &gt; Migrate from Polylang to WPML</a> page.", "migrate-polylang")),
+			esc_url($this->migration_page_url())
+		); ?>
 	</p>
 </div>
 <?php
@@ -160,18 +163,25 @@ class Migrate_Polylang_To_WPML {
 
 		$title = __("Migrate from Polylang to WPML", 'migrate-polylang');
 
-		add_submenu_page('tools.php', $title, $title, 'manage_options', 'polylang-importer', array( &$this, 'migrate_page' ) );
+		add_submenu_page('tools.php', $title, $title, self::CAPABILITY, 'polylang-importer', array( &$this, 'migrate_page' ) );
 	}
 
 	public function migrate_page() {
+
+		// add_submenu_page() already gates the menu entry, but the callback can be reached by
+		// other means, so re-check rather than assume.
+		if (!current_user_can(self::CAPABILITY)) {
+			wp_die(esc_html__("You don't have permission to access this page.", 'migrate-polylang'));
+		}
+
 		?>
 <div class="wrap">
-	<h2><?php _e('Migrate data from Polylang to WPML', 'migrate-polylang'); ?></h2>
+	<h2><?php esc_html_e('Migrate data from Polylang to WPML', 'migrate-polylang'); ?></h2>
 <?php
 
-echo $this->introduction_text();
+echo wp_kses_post($this->introduction_text());
 
-echo $this->pre_check_text();
+echo wp_kses_post($this->pre_check_text());
 if ($this->pre_check_ready_all()) :
 	if (get_option('mpw_migration_done', false)) {
 		$migrate_button_label = __('Migrate again', 'migrate-polylang');
@@ -186,29 +196,29 @@ if ($this->pre_check_ready_all()) :
 	<form method="post" action="tools.php?page=polylang-importer">
 		<label for='migrate_polylang_to_wpml_confirm_db_backup'>
 		<input type='checkbox' id='migrate_polylang_to_wpml_confirm_db_backup' name='migrate_polylang_to_wpml_confirm_db_backup'>
-		 <?php _e("I confirm that I've created <a href='https://codex.wordpress.org/Backing_Up_Your_Database' target='_blank'>database backup</a>", "migrate-polylang"); ?>
+		 <?php echo wp_kses_post(__("I confirm that I've created <a href='https://codex.wordpress.org/Backing_Up_Your_Database' target='_blank'>database backup</a>", "migrate-polylang")); ?>
 		</label> <br>
 		<input type="hidden" name="migrate_wpml_action" value="migrate" />
 		<input type="submit"
 			   name="migrate-polylang-wpml"
 			   id="migrate_polylang_wpml"
-			   value="<?php echo $migrate_button_label; ?>"
+			   value="<?php echo esc_attr($migrate_button_label); ?>"
 			   class="button button-primary" disabled >
 		<div id="mpw_ajax_result"></div>
-		<div id="remove_polylang_data_part" style="<?php echo $hide_delete_button; ?>">
-			<h3><?php _e("Optional: erase Polylang data", "migrate-polylang"); ?></h3>
+		<div id="remove_polylang_data_part" style="<?php echo esc_attr($hide_delete_button); ?>">
+			<h3><?php esc_html_e("Optional: erase Polylang data", "migrate-polylang"); ?></h3>
 			<label for="remove_polylang_data_accept_1">
 				<input type="checkbox" class="remove_polylang_data_accept" name="remove_polylang_data_accept_1" id="remove_polylang_data_accept_1" value="1">
-					<?php _e("I understand that this will remove all data by Polylang. There is no undo to restore the data.", "migrate-polylang"); ?> <br>
+					<?php esc_html_e("I understand that this will remove all data by Polylang. There is no undo to restore the data.", "migrate-polylang"); ?> <br>
 			</label>
 			<label for="remove_polylang_data_accept_2">
 				<input type="checkbox" class="remove_polylang_data_accept" name="remove_polylang_data_accept_2" id="remove_polylang_data_accept_2" value="1">
-					<?php _e("I verified the migration and I see that my site displays fine with WPML. ", "migrate-polylang"); ?> <br>
+					<?php esc_html_e("I verified the migration and I see that my site displays fine with WPML. ", "migrate-polylang"); ?> <br>
 			</label>
 		<input type="submit"
 			   name="remove-polylang-data"
 			   id="remove_polylang_data"
-			   value="<?php _e("Erase Polylang old data from database (Optional) ", "migrate-polylang"); ?>"
+			   value="<?php esc_attr_e("Erase Polylang old data from database (Optional) ", "migrate-polylang"); ?>"
 			   class="button button-secondary"
 			   style="margin-top: 5px;" disabled >
 		</div>
@@ -218,9 +228,9 @@ if ($this->pre_check_ready_all()) :
 <?php
 else :
 ?>
-	<div style="color:red;font-weight: bold;"><?php _e("Please make sure all requirements have been met", "migrate-polylang"); ?></div>
+	<div style="color:red;font-weight: bold;"><?php esc_html_e("Please make sure all requirements have been met", "migrate-polylang"); ?></div>
 	<?php if ($this->polylang_data_deleted()) {
-		_e("You have already deleted Polylang data so there is nothing to migrate from.", "migrate-polylang");
+		esc_html_e("You have already deleted Polylang data so there is nothing to migrate from.", "migrate-polylang");
 	}
 endif; ?>
 </div>

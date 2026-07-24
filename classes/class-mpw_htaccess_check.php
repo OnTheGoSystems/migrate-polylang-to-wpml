@@ -1,4 +1,7 @@
 <?php
+
+defined('ABSPATH') || exit;
+
 class MPW_Htaccess_Check {
 	
 	private $polylang_data;
@@ -33,7 +36,8 @@ class MPW_Htaccess_Check {
 	
 	private function should_display() {
 		
-		$cookie = isset($_COOKIE['mpw_htaccess_notice_dismiss']) && $_COOKIE['mpw_htaccess_notice_dismiss'] == 1;
+		$cookie = isset($_COOKIE['mpw_htaccess_notice_dismiss'])
+				&& '1' === sanitize_text_field(wp_unslash($_COOKIE['mpw_htaccess_notice_dismiss']));
 		
 		$migration_done = get_option('mpw_migration_done', false);
 				
@@ -74,13 +78,18 @@ class MPW_Htaccess_Check {
 ?>
 <div class="notice notice-warning" id="mpw_htaccess_notice">
 	<p>
-		<?php printf(__("Polylang used to redirect traffic from %s to %s but WPML isn't doing this. If you have incoming links to %s, you should redirect this traffic to your site's root. To do this, add the following line to your .htaccess file:", "migrate-polylang"), $this->site_url, $urlto, $urlto); ?>
-		<br><code><?php echo $this->rewrite_entry; ?></code>
+		<?php printf(
+			esc_html__("Polylang used to redirect traffic from %1\$s to %2\$s but WPML isn't doing this. If you have incoming links to %3\$s, you should redirect this traffic to your site's root. To do this, add the following line to your .htaccess file:", "migrate-polylang"),
+			esc_html($this->site_url),
+			esc_html($urlto),
+			esc_html($urlto)
+		); ?>
+		<br><code><?php echo esc_html($this->rewrite_entry); ?></code>
 	</p>
 	<p>
-		<input type="button" name="" value="<?php _e("Check .htaccess again", "migrate-polylang"); ?>" class="button" onClick="window.location.reload();">
-		<input type="button" name="" value="<?php _e("Dismiss this notice", "migrate-polylang"); ?>" class="button" id="mpw_htaccess_notice_dismiss">
-		<a href="https://wpml.org/documentation/related-projects/migrate-polylang-wpml/" target="_blank"><?php _e("More information and other options", "migrate-polylang"); ?></a>
+		<input type="button" name="" value="<?php esc_attr_e("Check .htaccess again", "migrate-polylang"); ?>" class="button" onClick="window.location.reload();">
+		<input type="button" name="" value="<?php esc_attr_e("Dismiss this notice", "migrate-polylang"); ?>" class="button" id="mpw_htaccess_notice_dismiss">
+		<a href="https://wpml.org/documentation/related-projects/migrate-polylang-wpml/" target="_blank"><?php esc_html_e("More information and other options", "migrate-polylang"); ?></a>
 	</p>
 </div>
 <?php	
