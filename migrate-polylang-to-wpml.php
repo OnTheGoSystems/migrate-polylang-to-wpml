@@ -23,6 +23,12 @@ class Migrate_Polylang_To_WPML {
 	 */
 	const CAPABILITY = 'manage_options';
 
+	/**
+	 * Meta key Polylang stores its string translations under, on the `language` term since
+	 * Polylang 3.4 and on the polylang_mo post from 2.1 to 3.3.
+	 */
+	const PLL_STRINGS_META_KEY = '_pll_strings_translations';
+
 	private $polylang_data;
 	private $mpw_htaccess_check;
 
@@ -622,68 +628,168 @@ $text = "
 
 	}
 
+	/**
+	 * Collects Polylang's string translations for every language.
+	 *
+	 * Polylang has moved this data twice and neither move was picked up here, so the plugin has
+	 * been reading a post_content that Polylang stopped writing in 2017:
+	 *
+	 *   >= 3.4    term meta `_pll_strings_translations` on the `language` term
+	 *   2.1 - 3.3 post meta `_pll_strings_translations` on the polylang_mo post
+	 *   < 2.1     serialised array in the polylang_mo post's post_content
+	 *
+	 * Polylang deliberately leaves the older copies behind when it upgrades, so that users can
+	 * roll back. Read newest first and stop at the first location that holds anything.
+	 *
+	 * @param array $polylang_languages_map language term_id => language slug
+	 *
+	 * @return array language term_id => list of array($source, $translation)
+	 */
 	private function get_polylang_strings_array($polylang_languages_map) {
-		global $wpdb;
+		$polylang_strings_array = array();
 
-		$polylang_strings_array = null;
+		foreach (array_keys($polylang_languages_map) as $lang_id) {
+			$strings = $this->get_polylang_language_strings($lang_id);
 
-		foreach(array_keys($polylang_languages_map) as $lang_id) {
-			$post_with_polylang_strings = "SELECT post_content FROM ".$wpdb->prefix."posts where post_type = 'polylang_mo'  AND post_title=%s order by ID desc limit 1";
-
-			$polylang_strings = $wpdb->get_var($wpdb->prepare($post_with_polylang_strings, "polylang_mo_".$lang_id));
-
-
-			if ($polylang_strings) {
-				$polylang_strings_array[$lang_id] = maybe_unserialize($polylang_strings);
+			if ($strings) {
+				$polylang_strings_array[$lang_id] = $strings;
 			}
 		}
-
-
 
 		return $polylang_strings_array;
 	}
 
+	/**
+	 * @param int $lang_id A `language` taxonomy term ID.
+	 *
+	 * @return array List of array($source, $translation); empty when nothing is stored.
+	 */
+	private function get_polylang_language_strings($lang_id) {
+
+		// Polylang >= 3.4.
+		$strings = $this->normalize_string_pairs(get_term_meta($lang_id, self::PLL_STRINGS_META_KEY, true));
+
+		if ($strings) {
+			return $strings;
+		}
+
+		$mo_post = $this->get_polylang_mo_post($lang_id);
+
+		if (!isset($mo_post->ID)) {
+			return array();
+		}
+
+		// Polylang 2.1 - 3.3.
+		$strings = $this->normalize_string_pairs(get_post_meta($mo_post->ID, self::PLL_STRINGS_META_KEY, true));
+
+		if ($strings) {
+			return $strings;
+		}
+
+		// Polylang < 2.1.
+		return $this->normalize_string_pairs(maybe_unserialize($mo_post->post_content));
+	}
+
+	/**
+	 * @param int $lang_id A `language` taxonomy term ID.
+	 *
+	 * @return object|null The polylang_mo post carrying this language's strings, if it exists.
+	 */
+	private function get_polylang_mo_post($lang_id) {
+		global $wpdb;
+
+		$query = "SELECT ID, post_content FROM {$wpdb->posts}
+			WHERE post_type = 'polylang_mo' AND post_title = %s
+			ORDER BY ID DESC LIMIT 1";
+
+		return $wpdb->get_row($wpdb->prepare($query, 'polylang_mo_' . $lang_id));
+	}
+
+	/**
+	 * Keeps only the well-formed entries of a Polylang string table.
+	 *
+	 * Every storage location holds the same shape — a list of array($source, $translation) — but
+	 * a partially written or hand-edited row can hold anything. Entries with an empty source are
+	 * skipped (as Polylang skips them on read), and so are entries with an empty translation: there
+	 * is nothing to hand WPML, and writing a blank translation would be worse than writing none.
+	 *
+	 * @param mixed $value
+	 *
+	 * @return array List of array($source, $translation), both non-empty strings.
+	 */
+	private function normalize_string_pairs($value) {
+		if (!is_array($value)) {
+			return array();
+		}
+
+		$pairs = array();
+
+		foreach ($value as $pair) {
+			if (!is_array($pair) || !isset($pair[0], $pair[1])) {
+				continue;
+			}
+
+			if (!is_string($pair[0]) || !is_string($pair[1]) || '' === $pair[0] || '' === $pair[1]) {
+				continue;
+			}
+
+			$pairs[] = array($pair[0], $pair[1]);
+		}
+
+		return $pairs;
+	}
+
+	/**
+	 * Hands one language's Polylang string translations to WPML String Translation.
+	 *
+	 * `$wpml_string_translations` is indexed by `icl_strings.language`, which holds WPML language
+	 * codes. Both lookups therefore have to use the converted code, not the Polylang slug.
+	 *
+	 * @param int   $lang_id                  A `language` taxonomy term ID.
+	 * @param array $string_groups            List of array($source, $translation).
+	 * @param array $polylang_languages_map   language term_id => Polylang slug.
+	 * @param array $wpml_string_translations WPML code => string value => row.
+	 */
 	private function migrate_string_groups($lang_id, $string_groups, $polylang_languages_map, $wpml_string_translations) {
+		if (!isset($polylang_languages_map[$lang_id]) || !function_exists('icl_add_string_translation')) {
+			return;
+		}
 
-		$indexed_polylang_string_group = array();
+		$from = $this->polylang_data->lang_slug_to_wpml_format($this->polylang_data->get_default_language_slug());
+		$to = $this->polylang_data->lang_slug_to_wpml_format($polylang_languages_map[$lang_id]);
 
-		$default_language = $this->polylang_data->get_default_language_slug();
+		if ('' === $from || '' === $to || $from === $to) {
+			return;
+		}
 
-		$to_language = $polylang_languages_map[$lang_id];
+		$status = defined('ICL_STRING_TRANSLATION_COMPLETE') ? ICL_STRING_TRANSLATION_COMPLETE : 10;
 
-		$default_language_wpml_format = $this->polylang_data->lang_slug_to_wpml_format($default_language);
+		foreach ($string_groups as $group) {
+			// Polylang stores (source in the default language, translation in $to). WPML may have
+			// registered the string under either language, and occasionally under the translated
+			// value rather than the source, so try each combination in turn.
+			$candidates = array(
+				array($from, $group[0], $to, $group[1]),
+				array($to, $group[0], $from, $group[1]),
+				array($from, $group[1], $to, $group[0]),
+				array($to, $group[1], $from, $group[0]),
+			);
 
-		$to_language_wpml_format = $this->polylang_data->lang_slug_to_wpml_format($to_language);
+			foreach ($candidates as $candidate) {
+				list($registered_language, $registered_value, $target_language, $target_value) = $candidate;
 
-		foreach($string_groups as $group) {
-			if (isset($wpml_string_translations[$default_language][ $group[0] ])) {
+				if (!isset($wpml_string_translations[$registered_language][$registered_value])) {
+					continue;
+				}
+
 				icl_add_string_translation(
-					$wpml_string_translations[$default_language][$group[0]]->id,
-					$to_language_wpml_format,
-					$group[1],
-					ICL_STRING_TRANSLATION_COMPLETE
-					);
-			} else if (isset($wpml_string_translations[$to_language][ $group[0] ])) {
-					icl_add_string_translation(
-					$wpml_string_translations[$to_language][$group[0]]->id,
-					$default_language_wpml_format,
-					$group[1],
-					ICL_STRING_TRANSLATION_COMPLETE
-					);
-			} else if (isset($wpml_string_translations[$default_language][ $group[1] ])) {
-				icl_add_string_translation(
-					$wpml_string_translations[$default_language][$group[1]]->id,
-					$to_language_wpml_format,
-					$group[0],
-					ICL_STRING_TRANSLATION_COMPLETE
-					);
-			} else if (isset($wpml_string_translations[$to_language][ $group[1] ])) {
-					icl_add_string_translation(
-					$wpml_string_translations[$to_language][$group[1]]->id,
-					$default_language_wpml_format,
-					$group[0],
-					ICL_STRING_TRANSLATION_COMPLETE
-					);
+					$wpml_string_translations[$registered_language][$registered_value]->id,
+					$target_language,
+					$target_value,
+					$status
+				);
+
+				break;
 			}
 		}
 	}
