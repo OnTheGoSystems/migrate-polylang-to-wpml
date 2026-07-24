@@ -300,7 +300,10 @@ $text = "
 	}
 
 	private function pre_check_ready_all() {
-		return !$this->polylang_data_deleted() && $this->pre_check_polylang() and $this->pre_check_wpml() and $this->pre_check_wizard_complete();
+		return !$this->polylang_data_deleted()
+			&& $this->pre_check_polylang()
+			&& $this->pre_check_wpml()
+			&& $this->pre_check_wizard_complete();
 	}
 
 	/**
@@ -694,7 +697,7 @@ $text = "
 				$option = get_option($widget->option_name);
 				if ($option && is_array($option)) {
 					foreach ($option as $key => $val) {
-						if (is_numeric($key) && isset($val['pll_lang'])) {
+						if (is_numeric($key) && is_array($val) && isset($val['pll_lang'])) {
 							$option[$key]['wpml_language'] = $this->polylang_data->lang_slug_to_wpml_format($val['pll_lang']);
 						}
 					}
@@ -708,4 +711,8 @@ $text = "
 
 }
 
-$migrate_polylang_to_wpml = new Migrate_Polylang_To_WPML();
+// Everything this plugin does lives in wp-admin or admin-ajax.php, both of which satisfy
+// is_admin(). Loading it on front-end requests only cost two file includes and an init hook.
+if (is_admin()) {
+	$migrate_polylang_to_wpml = new Migrate_Polylang_To_WPML();
+}
