@@ -4,6 +4,14 @@ defined('ABSPATH') || exit;
 
 class mpw_migrate_posts {
 
+	/**
+	 * Keys that appear inside a Polylang relation but are not language slugs.
+	 *
+	 * `sync` is Polylang's duplicated-post map. `language_code` is added by this plugin when it
+	 * synthesises a relation for a post that has a language but no translation group.
+	 */
+	const RESERVED_RELATION_KEYS = array( 'sync', 'language_code' );
+
 	private $polylang_data;
 	private $wpdb;
 	private $polylang_default_language;
@@ -31,8 +39,17 @@ class mpw_migrate_posts {
 				continue;
 			}
 
-			$originalPostElementType = apply_filters( 'wpml_element_type', get_post_type( $originalPostId ) );
-			if ( ! $originalPostElementType ) {
+			// get_post_type() returns false for a post that no longer exists. Feeding that to
+			// wpml_element_type is unsafe: the filter's in_array() checks are non-strict, so on
+			// PHP 7 `false` matches the first registered taxonomy and the filter hands back the
+			// string "tax_".
+			$originalPostType = get_post_type( $originalPostId );
+			if ( ! is_string( $originalPostType ) || '' === $originalPostType ) {
+				continue;
+			}
+
+			$originalPostElementType = apply_filters( 'wpml_element_type', $originalPostType );
+			if ( ! is_string( $originalPostElementType ) || '' === $originalPostElementType ) {
 				continue;
 			}
 
@@ -107,10 +124,52 @@ class mpw_migrate_posts {
 	}
 
 	private function get_default_language_code($relation) {
-		$default_language_code['polylang'] = isset($relation['language_code']) ? $relation['language_code'] : $this->polylang_default_language;
-		$default_language_code['wpml'] = $this->polylang_data->lang_slug_to_wpml_format($default_language_code['polylang']);
+		$default_language_code = array( 'polylang' => '', 'wpml' => '' );
+
+		$original_slug = $this->get_original_language_slug( $relation );
+
+		if ( null === $original_slug ) {
+			return $default_language_code;
+		}
+
+		$default_language_code['polylang'] = $original_slug;
+		$default_language_code['wpml'] = $this->polylang_data->lang_slug_to_wpml_format($original_slug);
 
 		return $default_language_code;
+	}
+
+	/**
+	 * Picks the language slug whose post acts as the original of a translation group.
+	 *
+	 * Relations synthesised for untranslated posts carry an explicit `language_code`. Real
+	 * Polylang groups use the site default when it is present; groups that exist only in
+	 * secondary languages used to be dropped entirely, so fall back to the first usable entry
+	 * rather than losing them.
+	 *
+	 * @param array $relation Translation group, keyed by Polylang language slug.
+	 *
+	 * @return string|null A language slug, or null when the group holds nothing usable.
+	 */
+	private function get_original_language_slug( $relation ) {
+		if ( ! empty( $relation['language_code'] ) && is_string( $relation['language_code'] ) ) {
+			return $relation['language_code'];
+		}
+
+		if ( ! empty( $relation[ $this->polylang_default_language ] ) ) {
+			return $this->polylang_default_language;
+		}
+
+		foreach ( $relation as $slug => $post_id ) {
+			if ( in_array( $slug, self::RESERVED_RELATION_KEYS, true ) ) {
+				continue;
+			}
+
+			if ( is_string( $slug ) && ! empty( $post_id ) ) {
+				return $slug;
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -167,17 +226,23 @@ class mpw_migrate_posts {
 		/** @var \SitePress $sitepress */
 		global $sitepress;
 
-		$sync = $relation['sync'] ?? [];
+		$sync = isset( $relation['sync'] ) && is_array( $relation['sync'] ) ? $relation['sync'] : [];
 
 		if ( array_key_exists( $default_language_code['polylang'], $relation ) ) {
 			unset( $relation[ $default_language_code['polylang'] ] );
 		}
 
-		if ( array_key_exists( 'sync', $relation ) ) {
-			unset( $relation['sync'] );
+		// Strip everything that isn't a language slug. `language_code` used to survive this,
+		// so every untranslated post produced a bogus WPML call with the slug string passed as
+		// the element ID and "language_code" passed as the language.
+		foreach ( self::RESERVED_RELATION_KEYS as $reserved_key ) {
+			unset( $relation[ $reserved_key ] );
 		}
 
 		foreach ($relation as $next_post_language_code => $post_id) {
+			if ( empty( $post_id ) ) {
+				continue;
+			}
 
 			$next_post_language_code_wpml_format = $this->polylang_data->lang_slug_to_wpml_format($next_post_language_code);
 
@@ -190,9 +255,14 @@ class mpw_migrate_posts {
 			));
 		}
 
+		if ( ! is_object( $sitepress ) || ! method_exists( $sitepress, 'make_duplicate' ) ) {
+			return;
+		}
+
+		// Polylang's sync map is keyed by its own slugs; make_duplicate() wants a WPML code.
 		foreach ( $sync as $targetLang => $sourceLang ) {
 			if ( $targetLang !== $sourceLang ) {
-				$sitepress->make_duplicate( $originalPostId, $targetLang );
+				$sitepress->make_duplicate( $originalPostId, $this->polylang_data->lang_slug_to_wpml_format( $targetLang ) );
 			}
 		}
 	}
