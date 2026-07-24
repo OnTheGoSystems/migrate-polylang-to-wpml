@@ -9,7 +9,20 @@ Plugin uri: https://wpml.org
 Version: 0.5.0
  */
 
+defined('ABSPATH') || exit;
+
 class Migrate_Polylang_To_WPML {
+
+	/**
+	 * Nonce action shared by every AJAX endpoint of this plugin.
+	 */
+	const NONCE_ACTION = 'mpw_migrate';
+
+	/**
+	 * Capability required to run or undo a migration.
+	 */
+	const CAPABILITY = 'manage_options';
+
 	private $polylang_data;
 	private $mpw_htaccess_check;
 
@@ -45,6 +58,8 @@ class Migrate_Polylang_To_WPML {
 
 			wp_register_script('migrate-ajax',  plugins_url('scripts/ajax.js', __FILE__), array('jquery'), '', true);
 			$ajax_strings_translations = array(
+				'nonce' => wp_create_nonce(self::NONCE_ACTION),
+
 				'mig_start' => __("Migration started, please don't close this window...", 'migrate-polylang'),
 				'lan_start' => __("Moving your language settings...", 'migrate-polylang'),
 				'posts_start' => __("Setting languages for posts...", 'migrate-polylang'),
@@ -278,7 +293,42 @@ $text = "
 		return !$this->polylang_data_deleted() && $this->pre_check_polylang() and $this->pre_check_wpml() and $this->pre_check_wizard_complete();
 	}
 
+	/**
+	 * Rejects any AJAX request that isn't a deliberate action by an authorised administrator.
+	 *
+	 * Both halves matter. The capability check stops lower-privileged users from calling these
+	 * endpoints directly; the nonce stops a third-party page from driving them through a
+	 * logged-in administrator's browser.
+	 *
+	 * Sends a JSON error and terminates the request when either check fails.
+	 *
+	 * @return bool True when the request may proceed.
+	 */
+	private function verify_ajax_request() {
+		if (!current_user_can(self::CAPABILITY)) {
+			wp_send_json_error(array(
+				'msg' => __("You don't have permission to perform this action.", 'migrate-polylang'),
+				'res' => 'error'
+			), 403);
+
+			return false;
+		}
+
+		if (!check_ajax_referer(self::NONCE_ACTION, 'nonce', false)) {
+			wp_send_json_error(array(
+				'msg' => __("Security check failed. Please reload the page and try again.", 'migrate-polylang'),
+				'res' => 'error'
+			), 403);
+
+			return false;
+		}
+
+		return true;
+	}
+
 	public function ajax_migrate_languages() {
+		$this->verify_ajax_request();
+
 		if ($this->pre_check_ready_all()) {
 			$this->migrate_languages();
 			$response = array(
@@ -290,6 +340,8 @@ $text = "
 	}
 
 	public function ajax_migrate_posts() {
+		$this->verify_ajax_request();
+
 		if ($this->pre_check_ready_all()) {
 			require_once 'classes/class-mpw_migrate_posts.php';
 			$mpw_migrate_posts = new mpw_migrate_posts($this->polylang_data);
@@ -303,6 +355,8 @@ $text = "
 	}
 
 	public function ajax_migrate_taxonomies() {
+		$this->verify_ajax_request();
+
 		if ($this->pre_check_ready_all()) {
 			$this->migrate_taxonomies();
 			$response = array(
@@ -314,6 +368,8 @@ $text = "
 	}
 
 	public function ajax_migrate_strings() {
+		$this->verify_ajax_request();
+
 		if ($this->pre_check_ready_all() && $this->pre_check_wpml_st()) {
 			$this->migrate_strings();
 			$response = array(
@@ -330,6 +386,8 @@ $text = "
 	}
 
 	public function ajax_migrate_widgets() {
+		$this->verify_ajax_request();
+
 		if ($this->pre_check_ready_all() && $this->pre_check_wpml_widgets()) {
 			$this->migrate_widgets();
 			$response = array(
@@ -347,6 +405,8 @@ $text = "
 	}
 
 	public function ajax_delete_polylang_data() {
+		$this->verify_ajax_request();
+
 		$this->polylang_data->delete_data();
 		$response = array(
 			'msg' => __("Polylang data removed from database", 'migrate-polylang'),
