@@ -6,23 +6,23 @@ jQuery(document).ready(function( $ ) {
 		
 		$('#mpw_ajax_result').empty().append("<div>"+mpw_ajax_str.mig_start+"</div>");
 		$('#mpw_ajax_result').append("<div>"+mpw_ajax_str.lan_start+"</div>");
-		$.post(ajaxurl,{'action':'mpw_migrate_languages'})
+		$.post(ajaxurl,{'action':'mpw_migrate_languages','nonce':mpw_ajax_str.nonce})
 				.done(function(resp){ 
 					$('#mpw_ajax_result').append("<div>"+resp.data.msg+"</div>");
 					$('#mpw_ajax_result').append("<div>"+mpw_ajax_str.posts_start+"</div>");
-					$.post(ajaxurl,{'action':'mpw_migrate_posts'})
+					$.post(ajaxurl,{'action':'mpw_migrate_posts','nonce':mpw_ajax_str.nonce})
 							.done(function(resp) {
 								$('#mpw_ajax_result').append("<div>"+resp.data.msg+"</div>");
 								$('#mpw_ajax_result').append("<div>"+mpw_ajax_str.tax_start+"</div>");
-								$.post(ajaxurl,{'action':'mpw_migrate_taxonomies'})
+								$.post(ajaxurl,{'action':'mpw_migrate_taxonomies','nonce':mpw_ajax_str.nonce})
 										.done(function(resp) {
 											$('#mpw_ajax_result').append("<div>"+resp.data.msg+"</div>");
 											$('#mpw_ajax_result').append("<div>"+mpw_ajax_str.str_start+"</div>");
-											$.post(ajaxurl,{'action':'mpw_migrate_strings'})
+											$.post(ajaxurl,{'action':'mpw_migrate_strings','nonce':mpw_ajax_str.nonce})
 													.done(function(resp) {
 														$('#mpw_ajax_result').append("<div>"+resp.data.msg+"</div>");
 														$('#mpw_ajax_result').append("<div>"+mpw_ajax_str.widg_start+"</div>");
-														$.post(ajaxurl,{'action':'mpw_migrate_widgets'})
+														$.post(ajaxurl,{'action':'mpw_migrate_widgets','nonce':mpw_ajax_str.nonce})
 																.done(function(resp) {
 																	$('#mpw_ajax_result').append("<div>"+resp.data.msg+"</div>");
 																	$('#mpw_ajax_result').append("<div><strong>"+mpw_ajax_str.mig_done+"</strong></div>");
@@ -44,7 +44,7 @@ jQuery(document).ready(function( $ ) {
 			
 			$('#remove_polylang_data_result').empty().append("<div>"+mpw_ajax_str.del_start+"</div>");
 			
-			$.post(ajaxurl,{'action':'mpw_delete_polylang_data'})
+			$.post(ajaxurl,{'action':'mpw_delete_polylang_data','nonce':mpw_ajax_str.nonce})
 				.done(function(resp){
 					$('#remove_polylang_data_result').append("<div>"+resp.data.msg+"</div>");
 					$('#remove_polylang_data_part').hide();
