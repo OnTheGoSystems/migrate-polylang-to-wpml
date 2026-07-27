@@ -28,6 +28,11 @@ Import multilingual data from Polylang to WPML
 
 # Changelog
 
+## 0.5.1
+- Added capability and nonce checks to all migration and data-deletion AJAX actions.
+- Escaped admin output and sanitized the `.htaccess` notice dismissal cookie.
+- Prevented direct access to the plugin's PHP files.
+
 ## 0.5.0
 - Automatically set the translation preference to "translate" for translated custom post types.
 - Added the support for duplicated (synced) posts.
