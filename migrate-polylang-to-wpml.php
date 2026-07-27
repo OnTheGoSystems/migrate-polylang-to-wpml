@@ -480,10 +480,12 @@ $text = "
 								'language_code' => $language_code
 							));
 						} catch (Exception $e) {
-							echo $e->getMessage();
+							echo esc_html($e->getMessage());
 							echo "<br>Setting original term language details failed<br>";
 							printf('element_id was %s, element_type was %s, language_code was %s',
-									$original_term_taxonomy_id, $taxonomy, $default_language);
+									esc_html($original_term_taxonomy_id),
+									esc_html($taxonomy),
+									esc_html($default_language));
 							exit();
 						}
 
@@ -511,10 +513,14 @@ $text = "
 									'source_language_code' => $default_language
 								));
 							} catch (Exception $e) {
-								echo $e->getMessage();
+								echo esc_html($e->getMessage());
 								echo "<br>Setting translated term language details failed<br>";
 								printf('element_id was %s, element_type was %s, trid %s, language_code was %s, original language %s',
-										$translated_term_taxonomy_id, $taxonomy, $trid, $language_code, $default_language);
+										esc_html($translated_term_taxonomy_id),
+										esc_html($taxonomy),
+										esc_html($trid),
+										esc_html($language_code),
+										esc_html($default_language));
 								exit();
 							}
 						}
