@@ -28,6 +28,12 @@ Import multilingual data from Polylang to WPML
 
 # Changelog
 
+## 0.5.2
+- Fixed taxonomy migration for languages whose Polylang slugs differ from their WPML language codes, including Portuguese and Chinese.
+- Fixed language-code handling for post translation groups, including groups without a translation in the site's default language.
+- Prevented orphaned Polylang taxonomy translation groups from overwriting valid WPML relationships.
+- Improved PHP 8 compatibility when migrating incomplete or corrupt Polylang data.
+
 ## 0.5.1
 - Added capability and nonce checks to all migration and data-deletion AJAX actions.
 - Escaped admin output and sanitized the `.htaccess` notice dismissal cookie.
