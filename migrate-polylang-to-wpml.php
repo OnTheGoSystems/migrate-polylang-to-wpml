@@ -464,6 +464,11 @@ $text = "
 		$default_language_slug = $this->polylang_data->get_default_language_slug();
 
 		foreach ($pll_term_translations as $pll_term_translation) {
+			// Polylang can leave stale translation groups behind after terms are relinked.
+			if (empty($pll_term_translation->count)) {
+				continue;
+			}
+
 			if (!isset($pll_term_translation->description)) {
 				continue;
 			}
