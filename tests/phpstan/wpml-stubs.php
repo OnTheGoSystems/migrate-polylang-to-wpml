@@ -5,8 +5,6 @@
  * @package MigratePolylangToWPML
  */
 
-define( 'ICL_STRING_TRANSLATION_COMPLETE', 10 );
-
 // phpcs:disable Squiz.Commenting.FunctionComment.InvalidNoReturn -- PHPStan reads this analysis-only declaration without executing it.
 /**
  * Records a WPML String Translation translation at runtime.
