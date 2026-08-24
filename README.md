@@ -26,6 +26,24 @@ Import multilingual data from Polylang to WPML
 - please report any issue or feature request at [WPML forum ](https://wpml.org/forums/forum/english-support/)
 - please check [Wiki page](https://github.com/OnTheGoSystems/migrate-polylang-to-wpml/wiki) for known issues
 
+# Development
+
+The development tools require PHP 7.4 or newer and Composer 2. Install the locked dependencies with:
+
+```sh
+composer install --no-plugins --no-scripts
+```
+
+Run all local checks with:
+
+```sh
+composer check
+```
+
+The individual commands are `composer test`, `composer phpcs`, and `composer phpstan`. PHPUnit uses WordPress function mocks, so it does not require a WordPress installation or database. PHPStan analyzes the production plugin at level 3 with WordPress and WPML stubs. PHPCS initially covers the new test and analysis support code; the legacy production files will be introduced separately after their existing violations are addressed.
+
+CI runs the unit tests on the supported endpoints, PHP 7.4 and 8.5. Coding standards and static analysis run on PHP 8.5.
+
 # Changelog
 
 ## 0.5.2

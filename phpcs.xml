@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<ruleset name="Migrate Polylang to WPML">
+	<description>WPML coding standards for actively maintained code.</description>
+
+	<arg name="basepath" value="."/>
+	<arg name="colors"/>
+	<arg value="ps"/>
+	<config name="installed_paths" value="vendor/phpcsstandards/phpcsextra,vendor/phpcsstandards/phpcsutils,vendor/wp-coding-standards/wpcs"/>
+	<config name="testVersion" value="7.4-"/>
+
+	<file>tests/phpunit</file>
+	<file>tests/phpstan</file>
+	<file>classes/class-mpw_polylang_string_storage.php</file>
+
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+
+	<rule ref="WordPress-Core"/>
+	<rule ref="WordPress-Docs">
+		<exclude-pattern>tests/phpunit/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress-Extra"/>
+	<rule ref="WordPress.Files.FileName">
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+	</rule>
+
+	<rule ref="Squiz.Commenting.FileComment.Missing">
+		<severity>0</severity>
+	</rule>
+	<rule ref="Squiz.Commenting.ClassComment.Missing">
+		<severity>0</severity>
+	</rule>
+</ruleset>
