@@ -435,17 +435,26 @@ $text = "
 
 		$pll_languages = $this->polylang_data->get_languages();
 
-		if (!empty($pll_languages) && is_array($pll_languages)) {
-			foreach ($pll_languages as $pll_language) {
-				if (isset($pll_language->slug)) {
-					$slug = $this->polylang_data->lang_slug_to_wpml_format($pll_language->slug);
-					$wpdb->update(
-							$wpdb->prefix . 'icl_languages',
-							array('active' => 1),
-							array('code' => $slug)
-							);
-				}
+		if (empty($pll_languages) || !is_array($pll_languages)) {
+			return;
+		}
+
+		foreach ($pll_languages as $pll_language) {
+			if (!isset($pll_language->slug)) {
+				continue;
 			}
+
+			$code = $this->polylang_data->lang_slug_to_wpml_format($pll_language->slug);
+
+			if ('' === $code) {
+				continue;
+			}
+
+			$wpdb->update(
+				$wpdb->prefix . 'icl_languages',
+				array('active' => 1),
+				array('code' => $code)
+			);
 		}
 	}
 
@@ -499,6 +508,10 @@ $text = "
 			$element_type = apply_filters('wpml_element_type', $original_term->taxonomy);
 			$original_language_code = $this->polylang_data->lang_slug_to_wpml_format($original_slug);
 
+			if ('' === $original_language_code) {
+				continue;
+			}
+
 			do_action('wpml_set_element_language_details', array(
 				'element_id' => $original_term->term_taxonomy_id,
 				'element_type' => $element_type,
@@ -523,8 +536,9 @@ $text = "
 
 			foreach ($relation as $translation_slug => $term_id) {
 				$translated_term = $this->get_term_by_term_id($term_id);
+				$translation_language_code = $this->polylang_data->lang_slug_to_wpml_format($translation_slug);
 
-				if (!isset($translated_term->term_taxonomy_id)) {
+				if (!isset($translated_term->term_taxonomy_id) || '' === $translation_language_code) {
 					continue;
 				}
 
@@ -532,7 +546,7 @@ $text = "
 					'element_id' => $translated_term->term_taxonomy_id,
 					'element_type' => $element_type,
 					'trid' => $trid,
-					'language_code' => $this->polylang_data->lang_slug_to_wpml_format($translation_slug),
+					'language_code' => $translation_language_code,
 					'source_language_code' => $original_language_code
 				));
 			}
@@ -707,7 +721,11 @@ $text = "
 				if ($option && is_array($option)) {
 					foreach ($option as $key => $val) {
 						if (is_numeric($key) && is_array($val) && isset($val['pll_lang'])) {
-							$option[$key]['wpml_language'] = $this->polylang_data->lang_slug_to_wpml_format($val['pll_lang']);
+							$language_code = $this->polylang_data->lang_slug_to_wpml_format($val['pll_lang']);
+
+							if ('' !== $language_code) {
+								$option[$key]['wpml_language'] = $language_code;
+							}
 						}
 					}
 					update_option($widget->option_name, $option);
