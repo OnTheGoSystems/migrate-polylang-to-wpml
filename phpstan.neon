@@ -1,0 +1,16 @@
+includes:
+  - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+  level: 3
+
+  paths:
+    - migrate-polylang-to-wpml.php
+    - classes
+
+  scanFiles:
+    - tests/phpstan/sitepress-stub.php
+    - tests/phpstan/wpml-stubs.php
+
+  checkFunctionNameCase: true
+  inferPrivatePropertyTypeFromConstructor: true

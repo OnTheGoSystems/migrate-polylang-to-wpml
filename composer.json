@@ -1,0 +1,32 @@
+{
+    "name": "wpml/migrate-polylang-to-wpml",
+    "description": "Import multilingual data from Polylang to WPML",
+    "license": "GPL-2.0-only",
+    "type": "wordpress-plugin",
+    "config": {
+        "allow-plugins": false,
+        "platform": {
+            "php": "7.4"
+        },
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require-dev": {
+        "otgs/unit-tests-framework": "^5.0",
+        "phpstan/phpstan": "^2.2",
+        "squizlabs/php_codesniffer": "^3.10",
+        "szepeviktor/phpstan-wordpress": "^2.0",
+        "wp-coding-standards/wpcs": "^3.0"
+    },
+    "scripts": {
+        "check": [
+            "@test",
+            "@phpcs",
+            "@phpstan"
+        ],
+        "phpcs": "phpcs --standard=phpcs.xml",
+        "phpstan": "phpstan analyse --configuration=phpstan.neon --memory-limit=1G --no-progress --debug",
+        "test": "phpunit --configuration=phpunit.xml"
+    }
+}
