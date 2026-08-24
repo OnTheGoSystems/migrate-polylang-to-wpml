@@ -17,7 +17,7 @@ class TestLanguageMapping extends OTGS_TestCase {
 	 * @dataProvider localeMappings
 	 */
 	public function test_it_maps_polylang_slugs_to_wpml_codes( string $slug, string $locale, string $code ): void {
-		$this->wpdb->default_locales[ $locale ] = $code;
+		$this->wpdb->effective_locales[ $code ] = $locale;
 
 		$subject = $this->subject_with_languages( array( $this->language( $slug, $locale ) ) );
 
@@ -34,46 +34,40 @@ class TestLanguageMapping extends OTGS_TestCase {
 		);
 	}
 
-	public function test_locale_override_takes_precedence_over_the_default_locale(): void {
-		$this->wpdb->locale_overrides['pt_PT'] = 'custom-pt';
-		$this->wpdb->default_locales['pt_PT']  = 'pt-pt';
+	public function test_it_supports_an_arbitrary_custom_wpml_code(): void {
+		$this->wpdb->effective_locales['customers-own-code'] = 'pt_PT';
 
 		$subject = $this->subject_with_languages( array( $this->language( 'pt', 'pt_PT' ) ) );
 
-		$this->assertSame( 'custom-pt', $subject->lang_slug_to_wpml_format( 'pt' ) );
-	}
-
-	/**
-	 * @dataProvider legacyMappings
-	 */
-	public function test_it_keeps_legacy_fallbacks_when_wpml_tables_do_not_match( string $slug, string $locale, string $code ): void {
-		$subject = $this->subject_with_languages( array( $this->language( $slug, $locale ) ) );
-
-		$this->assertSame( $code, $subject->lang_slug_to_wpml_format( $slug ) );
-	}
-
-	public function legacyMappings(): array {
-		return array(
-			'Brazilian Portuguese' => array( 'pt', 'pt_BR', 'pt-br' ),
-			'Traditional Chinese'  => array( 'zh', 'zh_HK', 'zh-hant' ),
-			'Simplified Chinese'   => array( 'zh', 'zh_CN', 'zh-hans' ),
-		);
+		$this->assertSame( 'customers-own-code', $subject->lang_slug_to_wpml_format( 'pt' ) );
 	}
 
 	public function test_it_records_an_unknown_slug(): void {
 		$subject = $this->subject_with_languages( array( $this->language( 'klingon', 'tlh_AA' ) ) );
 
-		$this->assertSame( 'klingon', $subject->lang_slug_to_wpml_format( 'klingon' ) );
+		$this->assertSame( '', $subject->lang_slug_to_wpml_format( 'klingon' ) );
 		$this->assertSame( array( 'klingon' => 'tlh_AA' ), $subject->get_unmapped_languages() );
 	}
 
-	public function test_it_accepts_a_known_slug_when_its_locale_does_not_match(): void {
-		$this->wpdb->known_codes = array( 'es' );
+	public function test_equal_codes_do_not_map_without_a_matching_locale(): void {
+		$this->wpdb->effective_locales['es'] = 'es_MX';
 
-		$subject = $this->subject_with_languages( array( $this->language( 'es', '' ) ) );
+		$subject = $this->subject_with_languages( array( $this->language( 'es', 'es_ES' ) ) );
 
-		$this->assertSame( 'es', $subject->lang_slug_to_wpml_format( 'es' ) );
-		$this->assertSame( array(), $subject->get_unmapped_languages() );
+		$this->assertSame( '', $subject->lang_slug_to_wpml_format( 'es' ) );
+		$this->assertSame( array( 'es' => 'es_ES' ), $subject->get_unmapped_languages() );
+	}
+
+	public function test_an_ambiguous_locale_is_not_mapped_arbitrarily(): void {
+		$this->wpdb->effective_locales = array(
+			'custom-one' => 'en_US',
+			'custom-two' => 'en_US',
+		);
+
+		$subject = $this->subject_with_languages( array( $this->language( 'english', 'en_US' ) ) );
+
+		$this->assertSame( '', $subject->lang_slug_to_wpml_format( 'english' ) );
+		$this->assertSame( array( 'english' => 'en_US' ), $subject->get_unmapped_languages() );
 	}
 
 	/**

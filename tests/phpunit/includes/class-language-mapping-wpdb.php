@@ -1,10 +1,8 @@
 <?php
 class LanguageMappingWpdb {
 
-	public string $prefix          = 'wp_';
-	public array $locale_overrides = array();
-	public array $default_locales  = array();
-	public array $known_codes      = array();
+	public string $prefix           = 'wp_';
+	public array $effective_locales = array();
 
 	private string $prepared_value = '';
 
@@ -14,17 +12,16 @@ class LanguageMappingWpdb {
 		return $query;
 	}
 
-	public function get_var( string $query ) {
-		if ( false !== strpos( $query, 'icl_locale_map' ) ) {
-			return $this->locale_overrides[ $this->prepared_value ] ?? null;
+	public function get_col( string $query ): array {
+		if ( false === strpos( $query, 'COALESCE' ) ) {
+			return array();
 		}
 
-		if ( false !== strpos( $query, 'default_locale' ) ) {
-			return $this->default_locales[ $this->prepared_value ] ?? null;
-		}
-
-		return in_array( $this->prepared_value, $this->known_codes, true )
-			? $this->prepared_value
-			: null;
+		return array_keys(
+			array_filter(
+				$this->effective_locales,
+				fn( string $locale ): bool => $this->prepared_value === $locale
+			)
+		);
 	}
 }

@@ -130,18 +130,13 @@ class mpw_polylang_data {
 	/**
 	 * Translates a Polylang language slug into the WPML language code.
 	 *
-	 * A Polylang slug is whatever the site owner typed when they created the language. A WPML code
-	 * comes from a fixed list of about 250. The dependable bridge between them is the locale:
-	 * Polylang keeps it in the `language` term's serialised description, and WPML keeps it in
-	 * `icl_languages.default_locale`, with per-site overrides in `icl_locale_map`.
+	 * Both Polylang slugs and WPML codes can be customised independently. The dependable bridge
+	 * between them is the locale: Polylang keeps it in the `language` term's serialised
+	 * description, and WPML keeps it in `icl_languages.default_locale`, with per-site overrides
+	 * in `icl_locale_map`.
 	 *
 	 * WPML resolves a code to a locale in WPML_Locale::get_all_locales() by preferring the override
 	 * and falling back to the default. This runs that same lookup backwards.
-	 *
-	 * Order of resolution:
-	 *   1. the locale from Polylang, matched against WPML's own tables
-	 *   2. the historical pt/zh special cases, if WPML's tables have nothing to say
-	 *   3. the slug unchanged, which is already correct wherever the two systems agree
 	 *
 	 * @param mixed $slug
 	 *
@@ -167,10 +162,11 @@ class mpw_polylang_data {
 	}
 
 	/**
-	 * Languages whose slug reached WPML unmapped and which WPML does not recognise.
+	 * Languages whose locale could not be mapped unambiguously to a WPML language.
 	 *
-	 * Writing one of these into icl_translations is not an error WPML will report — it stores the
-	 * code verbatim — so the migration reports them instead.
+	 * A Polylang slug and a WPML code may happen to be equal, but that is not evidence that they
+	 * represent the same language. Callers receive an empty code for these entries so they do not
+	 * write an unsupported or incorrect language into WPML.
 	 *
 	 * @return array Polylang slug => locale (empty string when Polylang had no locale either).
 	 */
@@ -194,39 +190,7 @@ class mpw_polylang_data {
 			}
 		}
 
-		$legacy_code = $this->legacy_code_for_slug($slug, $locale);
-
-		if ('' !== $legacy_code) {
-			return $legacy_code;
-		}
-
-		if (!$this->is_known_wpml_code($slug)) {
-			$this->unmapped_languages[$slug] = $locale;
-		}
-
-		return $slug;
-	}
-
-	/**
-	 * The mapping this plugin shipped before WPML's tables were consulted.
-	 *
-	 * Kept as a fallback for sites where the WPML tables cannot answer. The Chinese case is
-	 * corrected here: the old code sent every `zh` slug to `zh-hans`, so a Traditional Chinese
-	 * site was migrated as Simplified.
-	 *
-	 * @param string $slug
-	 * @param string $locale
-	 *
-	 * @return string Empty string when this slug has no special case.
-	 */
-	private function legacy_code_for_slug($slug, $locale) {
-		if ('pt' === $slug) {
-			return 'pt_BR' === $locale ? 'pt-br' : 'pt-pt';
-		}
-
-		if ('zh' === $slug) {
-			return in_array($locale, array('zh_TW', 'zh_HK', 'zh_MO'), true) ? 'zh-hant' : 'zh-hans';
-		}
+		$this->unmapped_languages[$slug] = $locale;
 
 		return '';
 	}
@@ -270,40 +234,16 @@ class mpw_polylang_data {
 			return '';
 		}
 
-		// ORDER BY code so a site that has hand-added a second icl_locale_map row for one locale
-		// still resolves to a single, deterministic code rather than whatever the engine returns first.
-		$code = $wpdb->get_var($wpdb->prepare(
-			"SELECT code FROM {$wpdb->prefix}icl_locale_map WHERE locale = %s ORDER BY code LIMIT 1",
+		$codes = $wpdb->get_col($wpdb->prepare(
+			"SELECT languages.code
+			FROM {$wpdb->prefix}icl_languages languages
+			LEFT JOIN {$wpdb->prefix}icl_locale_map locale_map ON locale_map.code = languages.code
+			WHERE COALESCE(locale_map.locale, languages.default_locale) = %s
+			ORDER BY languages.code",
 			$locale
 		));
 
-		if (!$code) {
-			$code = $wpdb->get_var($wpdb->prepare(
-				"SELECT code FROM {$wpdb->prefix}icl_languages WHERE default_locale = %s ORDER BY code LIMIT 1",
-				$locale
-			));
-		}
-
-		return is_string($code) ? $code : '';
-	}
-
-	/**
-	 * @param string $code
-	 *
-	 * @return bool
-	 */
-	private function is_known_wpml_code($code) {
-		global $wpdb;
-
-		if (!$this->wpml_tables_available()) {
-			// Without WPML there is nothing to check against, so don't claim the code is wrong.
-			return true;
-		}
-
-		return (bool) $wpdb->get_var($wpdb->prepare(
-			"SELECT code FROM {$wpdb->prefix}icl_languages WHERE code = %s LIMIT 1",
-			$code
-		));
+		return is_array($codes) && 1 === count($codes) && is_string($codes[0]) ? $codes[0] : '';
 	}
 
 	/**
