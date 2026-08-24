@@ -96,12 +96,17 @@ class MPW_Polylang_String_Storage {
 	 * @return object|null The post carrying this language's strings, if it exists.
 	 */
 	private function get_mo_post( $language_id ) {
-		$query = "SELECT ID, post_content FROM {$this->wpdb->posts}
-			WHERE post_type = 'polylang_mo' AND post_title = %s
-			ORDER BY ID DESC LIMIT 1";
+		$wpdb = $this->wpdb;
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The query is prepared immediately above through the injected wpdb object; this migration must read Polylang's internal storage directly.
-		return $this->wpdb->get_row( $this->wpdb->prepare( $query, 'polylang_mo_' . $language_id ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- This migration must read Polylang's internal storage directly.
+		return $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT ID, post_content FROM {$wpdb->posts}
+					WHERE post_type = 'polylang_mo' AND post_title = %s
+					ORDER BY ID DESC LIMIT 1",
+				'polylang_mo_' . $language_id
+			)
+		);
 	}
 
 	/**
