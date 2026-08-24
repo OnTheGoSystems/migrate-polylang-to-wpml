@@ -130,8 +130,13 @@ class mpw_polylang_data {
 	/**
 	 * Translates a Polylang language slug into the WPML language code.
 	 *
-	 * Both Polylang slugs and WPML codes can be customised independently, so the locale is used
-	 * as the bridge between them.
+	 * Both Polylang slugs and WPML codes can be customised independently. The dependable bridge
+	 * between them is the locale: Polylang keeps it in the `language` term's serialised
+	 * description, and WPML keeps it in `icl_languages.default_locale`, with per-site overrides
+	 * in `icl_locale_map`.
+	 *
+	 * WPML resolves a code to a locale in WPML_Locale::get_all_locales() by preferring the override
+	 * and falling back to the default. This runs that same lookup backwards.
 	 *
 	 * @param mixed $slug
 	 *
@@ -223,26 +228,29 @@ class mpw_polylang_data {
 	 * @return string The WPML code for this locale, or an empty string.
 	 */
 	private function wpml_code_for_locale($locale) {
-		$languages = apply_filters('wpml_active_languages', null);
+		global $wpdb;
 
-		if (!is_array($languages)) {
+		if (!$this->wpml_tables_available()) {
 			return '';
 		}
 
-		$codes = array();
+		$codes = $wpdb->get_col($wpdb->prepare(
+			"SELECT languages.code
+			FROM {$wpdb->prefix}icl_languages languages
+			LEFT JOIN {$wpdb->prefix}icl_locale_map locale_map ON locale_map.code = languages.code
+			WHERE COALESCE(locale_map.locale, languages.default_locale) = %s
+			ORDER BY languages.code",
+			$locale
+		));
 
-		foreach ($languages as $language) {
-			if (
-				is_array($language)
-				&& isset($language['language_code'], $language['default_locale'])
-				&& is_string($language['language_code'])
-				&& $locale === $language['default_locale']
-			) {
-				$codes[] = $language['language_code'];
-			}
-		}
+		return is_array($codes) && 1 === count($codes) && is_string($codes[0]) ? $codes[0] : '';
+	}
 
-		return 1 === count($codes) ? $codes[0] : '';
+	/**
+	 * @return bool
+	 */
+	private function wpml_tables_available() {
+		return defined('ICL_SITEPRESS_VERSION');
 	}
 	
 	
