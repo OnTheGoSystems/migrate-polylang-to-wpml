@@ -13,7 +13,7 @@ class TestStringStorage extends OTGS_TestCase {
 	/**
 	 * System under test.
 	 *
-	 * @var Migrate_Polylang_To_WPML
+	 * @var MPW_Polylang_String_Storage
 	 */
 	private $subject;
 
@@ -30,12 +30,8 @@ class TestStringStorage extends OTGS_TestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$reflection    = new ReflectionClass( Migrate_Polylang_To_WPML::class );
-		$this->subject = $reflection->newInstanceWithoutConstructor();
 		$this->wpdb    = new StringStorageWpdb();
-
-		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- The test isolates database access with a local double.
-		$GLOBALS['wpdb'] = $this->wpdb;
+		$this->subject = new MPW_Polylang_String_Storage( $this->wpdb );
 	}
 
 	/**
@@ -44,24 +40,26 @@ class TestStringStorage extends OTGS_TestCase {
 	 * @test
 	 */
 	public function it_reads_populated_term_meta() {
+		$language_map = array( 7 => 'fr' );
+
 		WP_Mock::userFunction(
 			'metadata_exists',
 			array(
-				'args'   => array( 'term', 7, Migrate_Polylang_To_WPML::PLL_STRINGS_META_KEY ),
+				'args'   => array( 'term', 7, MPW_Polylang_String_Storage::META_KEY ),
 				'return' => true,
 			)
 		);
 		WP_Mock::userFunction(
 			'get_term_meta',
 			array(
-				'args'   => array( 7, Migrate_Polylang_To_WPML::PLL_STRINGS_META_KEY, true ),
+				'args'   => array( 7, MPW_Polylang_String_Storage::META_KEY, true ),
 				'return' => array( array( 'Hello', 'Bonjour' ) ),
 			)
 		);
 
 		$this->assertSame(
-			array( array( 'Hello', 'Bonjour' ) ),
-			$this->read_language_strings( 7 )
+			array( 7 => array( array( 'Hello', 'Bonjour' ) ) ),
+			$this->subject->get_all( $language_map )
 		);
 		$this->assertSame( 0, $this->wpdb->get_row_calls );
 	}
@@ -80,7 +78,7 @@ class TestStringStorage extends OTGS_TestCase {
 		WP_Mock::userFunction( 'metadata_exists', array( 'return' => true ) );
 		WP_Mock::userFunction( 'get_term_meta', array( 'return' => array() ) );
 
-		$this->assertSame( array(), $this->read_language_strings( 7 ) );
+		$this->assertSame( array(), $this->subject->get_for_language( 7 ) );
 		$this->assertSame( 0, $this->wpdb->get_row_calls );
 	}
 
@@ -101,13 +99,13 @@ class TestStringStorage extends OTGS_TestCase {
 		WP_Mock::userFunction(
 			'get_post_meta',
 			array(
-				'args'   => array( 42, Migrate_Polylang_To_WPML::PLL_STRINGS_META_KEY, true ),
+				'args'   => array( 42, MPW_Polylang_String_Storage::META_KEY, true ),
 				'return' => $post_meta_pairs,
 			)
 		);
 		WP_Mock::userFunction( 'maybe_unserialize', array( 'times' => 0 ) );
 
-		$this->assertSame( $post_meta_pairs, $this->read_language_strings( 7 ) );
+		$this->assertSame( $post_meta_pairs, $this->subject->get_for_language( 7 ) );
 	}
 
 	/**
@@ -126,7 +124,7 @@ class TestStringStorage extends OTGS_TestCase {
 		WP_Mock::userFunction( 'get_post_meta', array( 'return' => array() ) );
 		WP_Mock::userFunction( 'maybe_unserialize', array( 'times' => 0 ) );
 
-		$this->assertSame( array(), $this->read_language_strings( 7 ) );
+		$this->assertSame( array(), $this->subject->get_for_language( 7 ) );
 	}
 
 	/**
@@ -152,7 +150,7 @@ class TestStringStorage extends OTGS_TestCase {
 			)
 		);
 
-		$this->assertSame( $legacy_pairs, $this->read_language_strings( 7 ) );
+		$this->assertSame( $legacy_pairs, $this->subject->get_for_language( 7 ) );
 	}
 
 	/**
@@ -163,7 +161,7 @@ class TestStringStorage extends OTGS_TestCase {
 	public function it_returns_no_strings_when_the_language_has_no_storage() {
 		$this->expect_metadata_exists( 'term', 7, false );
 
-		$this->assertSame( array(), $this->read_language_strings( 7 ) );
+		$this->assertSame( array(), $this->subject->get_for_language( 7 ) );
 	}
 
 	/**
@@ -189,7 +187,7 @@ class TestStringStorage extends OTGS_TestCase {
 
 		$this->assertSame(
 			array( array( 'Hello', 'Bonjour' ) ),
-			$this->read_language_strings( 7 )
+			$this->subject->get_for_language( 7 )
 		);
 	}
 
@@ -204,24 +202,10 @@ class TestStringStorage extends OTGS_TestCase {
 		WP_Mock::userFunction(
 			'metadata_exists',
 			array(
-				'args'   => array( $meta_type, $object_id, Migrate_Polylang_To_WPML::PLL_STRINGS_META_KEY ),
+				'args'   => array( $meta_type, $object_id, MPW_Polylang_String_Storage::META_KEY ),
 				'return' => $exists,
 			)
 		);
-	}
-
-	/**
-	 * Invokes the private reader without constructing the admin controller.
-	 *
-	 * @param int $language_id Language term ID.
-	 *
-	 * @return array
-	 */
-	private function read_language_strings( $language_id ) {
-		$method = new ReflectionMethod( Migrate_Polylang_To_WPML::class, 'get_polylang_language_strings' );
-		$method->setAccessible( true );
-
-		return $method->invoke( $this->subject, $language_id );
 	}
 
 	/**

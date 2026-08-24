@@ -10,6 +10,7 @@
 
 	<file>tests/phpunit</file>
 	<file>tests/phpstan</file>
+	<file>classes/class-mpw_polylang_string_storage.php</file>
 
 	<exclude-pattern>*/vendor/*</exclude-pattern>
 

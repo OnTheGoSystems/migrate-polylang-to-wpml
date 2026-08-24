@@ -11,6 +11,8 @@ Version: 0.5.2
 
 defined('ABSPATH') || exit;
 
+require_once __DIR__ . '/classes/class-mpw_polylang_string_storage.php';
+
 class Migrate_Polylang_To_WPML {
 
 	/**
@@ -22,12 +24,6 @@ class Migrate_Polylang_To_WPML {
 	 * Capability required to run or undo a migration.
 	 */
 	const CAPABILITY = 'manage_options';
-
-	/**
-	 * Meta key Polylang stores its string translations under, on the `language` term since
-	 * Polylang 3.4 and on the polylang_mo post from 2.1 to 3.3.
-	 */
-	const PLL_STRINGS_META_KEY = '_pll_strings_translations';
 
 	private $polylang_data;
 	private $mpw_htaccess_check;
@@ -631,111 +627,16 @@ $text = "
 	/**
 	 * Collects Polylang's string translations for every language.
 	 *
-	 * Polylang has moved this data twice and neither move was picked up here, so the plugin has
-	 * been reading a post_content that Polylang stopped writing in 2017:
-	 *
-	 *   >= 3.4    term meta `_pll_strings_translations` on the `language` term
-	 *   2.1 - 3.3 post meta `_pll_strings_translations` on the polylang_mo post
-	 *   < 2.1     serialised array in the polylang_mo post's post_content
-	 *
-	 * Polylang deliberately leaves the older copies behind when it upgrades, so that users can
-	 * roll back. Read newest first and stop at the first location that holds anything.
-	 *
 	 * @param array $polylang_languages_map language term_id => language slug
 	 *
 	 * @return array language term_id => list of array($source, $translation)
 	 */
 	private function get_polylang_strings_array($polylang_languages_map) {
-		$polylang_strings_array = array();
-
-		foreach (array_keys($polylang_languages_map) as $lang_id) {
-			$strings = $this->get_polylang_language_strings($lang_id);
-
-			if ($strings) {
-				$polylang_strings_array[$lang_id] = $strings;
-			}
-		}
-
-		return $polylang_strings_array;
-	}
-
-	/**
-	 * @param int $lang_id A `language` taxonomy term ID.
-	 *
-	 * @return array List of array($source, $translation); empty when nothing is stored.
-	 */
-	private function get_polylang_language_strings($lang_id) {
-
-		// Polylang >= 3.4 stores the strings in the language term's meta. If that key exists at all
-		// it is authoritative — even when it holds nothing — so we must not fall through to the older
-		// copies Polylang leaves in place on upgrade, which would re-import translations the site has
-		// since cleared.
-		if (metadata_exists('term', $lang_id, self::PLL_STRINGS_META_KEY)) {
-			return $this->normalize_string_pairs(get_term_meta($lang_id, self::PLL_STRINGS_META_KEY, true));
-		}
-
-		$mo_post = $this->get_polylang_mo_post($lang_id);
-
-		if (!isset($mo_post->ID)) {
-			return array();
-		}
-
-		// Polylang 2.1 - 3.3 stored them in post meta on the polylang_mo post; same rule applies.
-		if (metadata_exists('post', $mo_post->ID, self::PLL_STRINGS_META_KEY)) {
-			return $this->normalize_string_pairs(get_post_meta($mo_post->ID, self::PLL_STRINGS_META_KEY, true));
-		}
-
-		// Polylang < 2.1 kept them serialised in the post content.
-		return $this->normalize_string_pairs(maybe_unserialize($mo_post->post_content));
-	}
-
-	/**
-	 * @param int $lang_id A `language` taxonomy term ID.
-	 *
-	 * @return object|null The polylang_mo post carrying this language's strings, if it exists.
-	 */
-	private function get_polylang_mo_post($lang_id) {
 		global $wpdb;
 
-		$query = "SELECT ID, post_content FROM {$wpdb->posts}
-			WHERE post_type = 'polylang_mo' AND post_title = %s
-			ORDER BY ID DESC LIMIT 1";
+		$storage = new MPW_Polylang_String_Storage($wpdb);
 
-		return $wpdb->get_row($wpdb->prepare($query, 'polylang_mo_' . $lang_id));
-	}
-
-	/**
-	 * Keeps only the well-formed entries of a Polylang string table.
-	 *
-	 * Every storage location holds the same shape — a list of array($source, $translation) — but
-	 * a partially written or hand-edited row can hold anything. Entries with an empty source are
-	 * skipped (as Polylang skips them on read), and so are entries with an empty translation: there
-	 * is nothing to hand WPML, and writing a blank translation would be worse than writing none.
-	 *
-	 * @param mixed $value
-	 *
-	 * @return array List of array($source, $translation), both non-empty strings.
-	 */
-	private function normalize_string_pairs($value) {
-		if (!is_array($value)) {
-			return array();
-		}
-
-		$pairs = array();
-
-		foreach ($value as $pair) {
-			if (!is_array($pair) || !isset($pair[0], $pair[1])) {
-				continue;
-			}
-
-			if (!is_string($pair[0]) || !is_string($pair[1]) || '' === $pair[0] || '' === $pair[1]) {
-				continue;
-			}
-
-			$pairs[] = array($pair[0], $pair[1]);
-		}
-
-		return $pairs;
+		return $storage->get_all($polylang_languages_map);
 	}
 
 	/**
