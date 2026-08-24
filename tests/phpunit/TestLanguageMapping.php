@@ -1,14 +1,8 @@
 <?php
 class TestLanguageMapping extends OTGS_TestCase {
 
-	private LanguageMappingWpdb $wpdb;
-
 	public function setUp(): void {
 		parent::setUp();
-
-		$this->wpdb = new LanguageMappingWpdb();
-		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- The subject reads the WordPress database global directly.
-		$GLOBALS['wpdb'] = $this->wpdb;
 
 		WP_Mock::userFunction( 'maybe_unserialize', array( 'return_arg' => 0 ) );
 	}
@@ -17,9 +11,10 @@ class TestLanguageMapping extends OTGS_TestCase {
 	 * @dataProvider localeMappings
 	 */
 	public function test_it_maps_polylang_slugs_to_wpml_codes( string $slug, string $locale, string $code ): void {
-		$this->wpdb->effective_locales[ $code ] = $locale;
-
-		$subject = $this->subject_with_languages( array( $this->language( $slug, $locale ) ) );
+		$subject = $this->subject_with_languages(
+			array( $this->language( $slug, $locale ) ),
+			array( $this->wpml_language( $code, $locale ) )
+		);
 
 		$this->assertSame( $code, $subject->lang_slug_to_wpml_format( $slug ) );
 	}
@@ -35,36 +30,42 @@ class TestLanguageMapping extends OTGS_TestCase {
 	}
 
 	public function test_it_supports_an_arbitrary_custom_wpml_code(): void {
-		$this->wpdb->effective_locales['customers-own-code'] = 'pt_PT';
-
-		$subject = $this->subject_with_languages( array( $this->language( 'pt', 'pt_PT' ) ) );
+		$subject = $this->subject_with_languages(
+			array( $this->language( 'pt', 'pt_PT' ) ),
+			array( $this->wpml_language( 'customers-own-code', 'pt_PT' ) )
+		);
 
 		$this->assertSame( 'customers-own-code', $subject->lang_slug_to_wpml_format( 'pt' ) );
 	}
 
 	public function test_it_records_an_unknown_slug(): void {
-		$subject = $this->subject_with_languages( array( $this->language( 'klingon', 'tlh_AA' ) ) );
+		$subject = $this->subject_with_languages(
+			array( $this->language( 'klingon', 'tlh_AA' ) ),
+			array()
+		);
 
 		$this->assertSame( '', $subject->lang_slug_to_wpml_format( 'klingon' ) );
 		$this->assertSame( array( 'klingon' => 'tlh_AA' ), $subject->get_unmapped_languages() );
 	}
 
 	public function test_equal_codes_do_not_map_without_a_matching_locale(): void {
-		$this->wpdb->effective_locales['es'] = 'es_MX';
-
-		$subject = $this->subject_with_languages( array( $this->language( 'es', 'es_ES' ) ) );
+		$subject = $this->subject_with_languages(
+			array( $this->language( 'es', 'es_ES' ) ),
+			array( $this->wpml_language( 'es', 'es_MX' ) )
+		);
 
 		$this->assertSame( '', $subject->lang_slug_to_wpml_format( 'es' ) );
 		$this->assertSame( array( 'es' => 'es_ES' ), $subject->get_unmapped_languages() );
 	}
 
 	public function test_an_ambiguous_locale_is_not_mapped_arbitrarily(): void {
-		$this->wpdb->effective_locales = array(
-			'custom-one' => 'en_US',
-			'custom-two' => 'en_US',
+		$subject = $this->subject_with_languages(
+			array( $this->language( 'english', 'en_US' ) ),
+			array(
+				$this->wpml_language( 'custom-one', 'en_US' ),
+				$this->wpml_language( 'custom-two', 'en_US' ),
+			)
 		);
-
-		$subject = $this->subject_with_languages( array( $this->language( 'english', 'en_US' ) ) );
 
 		$this->assertSame( '', $subject->lang_slug_to_wpml_format( 'english' ) );
 		$this->assertSame( array( 'english' => 'en_US' ), $subject->get_unmapped_languages() );
@@ -87,10 +88,12 @@ class TestLanguageMapping extends OTGS_TestCase {
 		);
 	}
 
-	private function subject_with_languages( array $languages ): mpw_polylang_data {
+	private function subject_with_languages( array $languages, array $wpml_languages = array() ): mpw_polylang_data {
 		$terms = new ReflectionProperty( 'mpw_polylang_data', 'terms' );
 		$terms->setAccessible( true );
 		$terms->setValue( null, array( 'language' => $languages ) );
+
+		WP_Mock::onFilter( 'wpml_active_languages' )->with( null )->reply( $wpml_languages );
 
 		return new mpw_polylang_data();
 	}
@@ -99,6 +102,13 @@ class TestLanguageMapping extends OTGS_TestCase {
 		return (object) array(
 			'slug'        => $slug,
 			'description' => array( 'locale' => $locale ),
+		);
+	}
+
+	private function wpml_language( string $code, string $locale ): array {
+		return array(
+			'language_code'  => $code,
+			'default_locale' => $locale,
 		);
 	}
 }
