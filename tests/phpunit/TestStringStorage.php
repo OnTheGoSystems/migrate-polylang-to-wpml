@@ -1,32 +1,9 @@
 <?php
-/**
- * Tests for Polylang string-storage precedence.
- *
- * @package MigratePolylangToWPML
- */
-
-/**
- * Verifies storage precedence and normalization.
- */
 class TestStringStorage extends OTGS_TestCase {
 
-	/**
-	 * System under test.
-	 *
-	 * @var MPW_Polylang_String_Storage
-	 */
-	private $subject;
+	private MPW_Polylang_String_Storage $subject;
+	private StringStorageWpdb $wpdb;
 
-	/**
-	 * Database test double.
-	 *
-	 * @var StringStorageWpdb
-	 */
-	private $wpdb;
-
-	/**
-	 * Creates the system and database test doubles.
-	 */
 	public function setUp(): void {
 		parent::setUp();
 
@@ -34,12 +11,7 @@ class TestStringStorage extends OTGS_TestCase {
 		$this->subject = new MPW_Polylang_String_Storage( $this->wpdb );
 	}
 
-	/**
-	 * Reads valid translations from current term metadata.
-	 *
-	 * @test
-	 */
-	public function it_reads_populated_term_meta() {
+	public function test_it_reads_populated_term_meta() {
 		$language_map = array( 7 => 'fr' );
 
 		WP_Mock::userFunction(
@@ -61,15 +33,10 @@ class TestStringStorage extends OTGS_TestCase {
 			array( 7 => array( array( 'Hello', 'Bonjour' ) ) ),
 			$this->subject->get_all( $language_map )
 		);
-		$this->assertSame( 0, $this->wpdb->get_row_calls );
+		$this->assertCount( 0, $this->wpdb->queries );
 	}
 
-	/**
-	 * Does not revive stale data when current term metadata has been cleared.
-	 *
-	 * @test
-	 */
-	public function empty_term_meta_is_authoritative() {
+	public function test_empty_term_meta_is_authoritative() {
 		$this->wpdb->row = (object) array(
 			'ID'           => 42,
 			'post_content' => $this->serialize_pairs( array( array( 'Hello', 'Stale translation' ) ) ),
@@ -79,15 +46,10 @@ class TestStringStorage extends OTGS_TestCase {
 		WP_Mock::userFunction( 'get_term_meta', array( 'return' => array() ) );
 
 		$this->assertSame( array(), $this->subject->get_for_language( 7 ) );
-		$this->assertSame( 0, $this->wpdb->get_row_calls );
+		$this->assertCount( 0, $this->wpdb->queries );
 	}
 
-	/**
-	 * Reads post metadata when no current term metadata exists.
-	 *
-	 * @test
-	 */
-	public function it_reads_populated_post_meta_when_term_meta_does_not_exist() {
+	public function test_it_reads_populated_post_meta_when_term_meta_does_not_exist() {
 		$post_meta_pairs = array( array( 'Hello', 'Bonjour' ) );
 		$this->wpdb->row = (object) array(
 			'ID'           => 42,
@@ -108,12 +70,7 @@ class TestStringStorage extends OTGS_TestCase {
 		$this->assertSame( $post_meta_pairs, $this->subject->get_for_language( 7 ) );
 	}
 
-	/**
-	 * Does not revive legacy post content when post metadata has been cleared.
-	 *
-	 * @test
-	 */
-	public function empty_post_meta_is_authoritative() {
+	public function test_empty_post_meta_is_authoritative() {
 		$this->wpdb->row = (object) array(
 			'ID'           => 42,
 			'post_content' => $this->serialize_pairs( array( array( 'Hello', 'Stale translation' ) ) ),
@@ -127,12 +84,7 @@ class TestStringStorage extends OTGS_TestCase {
 		$this->assertSame( array(), $this->subject->get_for_language( 7 ) );
 	}
 
-	/**
-	 * Reads legacy post content only when neither metadata store exists.
-	 *
-	 * @test
-	 */
-	public function it_falls_back_to_legacy_post_content_when_newer_meta_does_not_exist() {
+	public function test_it_falls_back_to_legacy_post_content_when_newer_meta_does_not_exist() {
 		$legacy_pairs    = array( array( 'Hello', 'Bonjour' ) );
 		$legacy_content  = $this->serialize_pairs( $legacy_pairs );
 		$this->wpdb->row = (object) array(
@@ -153,23 +105,13 @@ class TestStringStorage extends OTGS_TestCase {
 		$this->assertSame( $legacy_pairs, $this->subject->get_for_language( 7 ) );
 	}
 
-	/**
-	 * Returns an empty list when there is no storage for the language.
-	 *
-	 * @test
-	 */
-	public function it_returns_no_strings_when_the_language_has_no_storage() {
+	public function test_it_returns_no_strings_when_the_language_has_no_storage() {
 		$this->expect_metadata_exists( 'term', 7, false );
 
 		$this->assertSame( array(), $this->subject->get_for_language( 7 ) );
 	}
 
-	/**
-	 * Filters malformed and incomplete translation pairs.
-	 *
-	 * @test
-	 */
-	public function it_ignores_malformed_pairs() {
+	public function test_it_ignores_malformed_pairs() {
 		WP_Mock::userFunction( 'metadata_exists', array( 'return' => true ) );
 		WP_Mock::userFunction(
 			'get_term_meta',
@@ -191,14 +133,7 @@ class TestStringStorage extends OTGS_TestCase {
 		);
 	}
 
-	/**
-	 * Sets an expectation for a metadata-presence check.
-	 *
-	 * @param string $meta_type Object type.
-	 * @param int    $object_id Object ID.
-	 * @param bool   $exists    Expected result.
-	 */
-	private function expect_metadata_exists( $meta_type, $object_id, $exists ) {
+	private function expect_metadata_exists( string $meta_type, int $object_id, bool $exists ): void {
 		WP_Mock::userFunction(
 			'metadata_exists',
 			array(
@@ -208,14 +143,7 @@ class TestStringStorage extends OTGS_TestCase {
 		);
 	}
 
-	/**
-	 * Produces the legacy storage representation used by old Polylang versions.
-	 *
-	 * @param array $pairs Translation pairs.
-	 *
-	 * @return string
-	 */
-	private function serialize_pairs( array $pairs ) {
+	private function serialize_pairs( array $pairs ): string {
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize -- Legacy Polylang stored these values with serialize().
 		return serialize( $pairs );
 	}

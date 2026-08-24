@@ -1,20 +1,9 @@
 <?php
-/**
- * Reads Polylang string translations from their version-specific storage.
- *
- * @package MigratePolylangToWPML
- */
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Provides access to strings stored by different Polylang versions.
- */
 class MPW_Polylang_String_Storage {
 
-	/**
-	 * Meta key used by current and recent Polylang versions.
-	 */
 	const META_KEY = '_pll_strings_translations';
 
 	/**

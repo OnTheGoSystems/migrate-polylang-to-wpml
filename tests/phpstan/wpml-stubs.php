@@ -1,9 +1,4 @@
 <?php
-/**
- * WPML APIs supplied by WPML String Translation at runtime.
- *
- * @package MigratePolylangToWPML
- */
 
 // phpcs:disable Squiz.Commenting.FunctionComment.InvalidNoReturn -- PHPStan reads this analysis-only declaration without executing it.
 /**

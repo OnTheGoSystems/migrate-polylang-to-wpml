@@ -1,9 +1,4 @@
 <?php
-/**
- * PHPUnit bootstrap.
- *
- * @package MigratePolylangToWPML
- */
 
 define( 'ABSPATH', dirname( __DIR__, 2 ) . '/' );
 

@@ -625,8 +625,6 @@ $text = "
 	}
 
 	/**
-	 * Collects Polylang's string translations for every language.
-	 *
 	 * @param array $polylang_languages_map language term_id => language slug
 	 *
 	 * @return array language term_id => list of array($source, $translation)

@@ -15,7 +15,9 @@
 	<exclude-pattern>*/vendor/*</exclude-pattern>
 
 	<rule ref="WordPress-Core"/>
-	<rule ref="WordPress-Docs"/>
+	<rule ref="WordPress-Docs">
+		<exclude-pattern>tests/phpunit/*</exclude-pattern>
+	</rule>
 	<rule ref="WordPress-Extra"/>
 	<rule ref="WordPress.Files.FileName">
 		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>

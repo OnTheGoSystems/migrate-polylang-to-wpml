@@ -1,13 +1,4 @@
 <?php
-/**
- * WPML SitePress API supplied by WPML core at runtime.
- *
- * @package MigratePolylangToWPML
- */
-
-/**
- * Partial SitePress definition used by static analysis.
- */
 class SitePress {
 
 	/**
