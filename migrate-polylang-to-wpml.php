@@ -465,9 +465,10 @@ $text = "
 	 * Mixing the two is what made this method skip Portuguese and Chinese groups entirely.
 	 */
 	private function migrate_taxonomies() {
-		// Clear stale WPML term-relation rows before reading the Polylang
-		// term translations. This used to happen inside get_term_translations().
+		// Clear stale WPML relation rows before reading the Polylang term
+		// translations and languages. This used to happen inside the getters.
 		$this->polylang_data->reset_translations('term_translations');
+		$this->polylang_data->reset_translations('language');
 
 		$pll_term_translations = $this->polylang_data->get_term_translations();
 
@@ -710,6 +711,10 @@ $text = "
 
 	private function migrate_widgets() {
 		global $wpdb;
+
+		// Clear stale WPML language-relation rows before lang_slug_to_wpml_format()
+		// reads the Polylang languages. This used to happen inside get_languages().
+		$this->polylang_data->reset_translations('language');
 
 		$options_table = $wpdb->prefix . "options";
 
