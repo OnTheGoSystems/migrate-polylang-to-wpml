@@ -33,11 +33,8 @@ class mpw_polylang_data {
 	private function get_terms($tax) {
 
 		if (!isset(self::$terms[$tax])) {
-			global $wpdb;
 
 			register_taxonomy($tax, null);
-			$table = $wpdb->prefix . "icl_translations";
-			$wpdb->delete($table, array('element_type' => 'tax_'.$tax));
 
 			// The two-argument form of get_terms() has been deprecated since WordPress 4.5.
 			$terms = get_terms(array(
@@ -51,6 +48,30 @@ class mpw_polylang_data {
 		}
 
 		return self::$terms[$tax];
+	}
+
+	/**
+	 * Delete WPML translation-relation rows for one of Polylang's private
+	 * taxonomies, so a (re-)run of the migration starts from a clean state.
+	 *
+	 * This cleanup used to run inside get_terms() as a side effect of reading
+	 * Polylang data. The getters are now pure reads, and the cleanup is an
+	 * explicit step that the migration handlers call before they read. The
+	 * method also checks manage_options itself so it only ever runs for an
+	 * administrator.
+	 *
+	 * @param string $tax Polylang taxonomy, e.g. 'language', 'post_translations'.
+	 *
+	 * @return void
+	 */
+	public function reset_translations($tax) {
+		if (!current_user_can('manage_options')) {
+			return;
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . "icl_translations";
+		$wpdb->delete($table, array('element_type' => 'tax_' . $tax));
 	}
 	
 	public function get_additional_languages_names() {

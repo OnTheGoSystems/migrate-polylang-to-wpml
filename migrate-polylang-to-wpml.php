@@ -358,6 +358,10 @@ $text = "
 		$this->verify_ajax_request();
 
 		if ($this->pre_check_ready_all()) {
+			// Clear stale WPML relation rows before the posts migration reads the
+			// Polylang data below. This used to happen inside the getters.
+			$this->polylang_data->reset_translations('post_translations');
+			$this->polylang_data->reset_translations('language');
 			require_once 'classes/class-mpw_migrate_posts.php';
 			$mpw_migrate_posts = new mpw_migrate_posts($this->polylang_data);
 			$mpw_migrate_posts->migrate_posts();
@@ -433,6 +437,10 @@ $text = "
 	private function migrate_languages() {
 		global $wpdb;
 
+		// Clear stale WPML language-relation rows before reading the Polylang
+		// languages. This used to happen inside get_languages().
+		$this->polylang_data->reset_translations('language');
+
 		$pll_languages = $this->polylang_data->get_languages();
 
 		if (!empty($pll_languages) && is_array($pll_languages)) {
@@ -457,6 +465,10 @@ $text = "
 	 * Mixing the two is what made this method skip Portuguese and Chinese groups entirely.
 	 */
 	private function migrate_taxonomies() {
+		// Clear stale WPML term-relation rows before reading the Polylang
+		// term translations. This used to happen inside get_term_translations().
+		$this->polylang_data->reset_translations('term_translations');
+
 		$pll_term_translations = $this->polylang_data->get_term_translations();
 
 		if (empty($pll_term_translations) || !is_array($pll_term_translations)) {
@@ -587,6 +599,10 @@ $text = "
 	}
 
 	private function migrate_strings() {
+		// Clear stale WPML language-relation rows before get_languages_map()
+		// reads the Polylang languages. This used to happen inside get_languages().
+		$this->polylang_data->reset_translations('language');
+
 		$polylang_languages_map = $this->polylang_data->get_languages_map();
 
 		$wpml_string_translations = $this->get_wpml_string_translations();
