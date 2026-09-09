@@ -6,7 +6,7 @@ Description: Import multilingual data from Polylang to WPML | <a href="https://w
 Author: OnTheGoSystems
 Author URI: http://www.onthegosystems.com/
 Plugin uri: https://wpml.org
-Version: 1.0
+Version: 5.0.0
  */
 
 defined('ABSPATH') || exit;
