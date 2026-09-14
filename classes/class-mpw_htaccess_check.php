@@ -3,6 +3,8 @@
 defined('ABSPATH') || exit;
 
 class MPW_Htaccess_Check {
+
+	const DISMISSED_META_KEY = 'mpw_htaccess_notice_dismissed';
 	
 	private $polylang_data;
 	
@@ -38,22 +40,58 @@ class MPW_Htaccess_Check {
 		}
 	}
 	
-	private function should_display() {
-		
-		$cookie = isset($_COOKIE['mpw_htaccess_notice_dismiss'])
-				&& '1' === sanitize_text_field(wp_unslash($_COOKIE['mpw_htaccess_notice_dismiss']));
-		
-		$migration_done = get_option('mpw_migration_done', false);
-				
-		$htaccess_edited = $this->htaccess_edited();
-		
-		return $migration_done && !$htaccess_edited && !$cookie;
-		
+	/**
+	 * The notice is for one kind of site only: Polylang was set to show the default
+	 * language in URLs, so the root redirected to /<default>/ and links to that URL now
+	 * need a redirect back (wpmlbridge-393). It shows on the migration page, once per
+	 * user until dismissed.
+	 *
+	 * @return bool
+	 */
+	public function should_display() {
+		return $this->is_migration_page()
+			&& get_option('mpw_migration_done', false)
+			&& $this->polylang_showed_the_default_language_in_urls()
+			&& !$this->dismissed_by_current_user()
+			&& !$this->htaccess_edited();
 	}
-	
-	
+
+	/**
+	 * @return bool
+	 */
+	private function is_migration_page() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading which admin page renders, not a form.
+		return isset($_GET['page']) && 'polylang-importer' === sanitize_key(wp_unslash($_GET['page']));
+	}
+
+	/**
+	 * Polylang's "Hide URL language information for default language" is on by default;
+	 * when the site owner switched it off, Polylang redirected the root to the default
+	 * language's directory.
+	 *
+	 * @return bool
+	 */
+	private function polylang_showed_the_default_language_in_urls() {
+		$options = get_option('polylang');
+
+		return is_array($options) && array_key_exists('hide_default', $options) && !$options['hide_default'];
+	}
+
+	/**
+	 * @return bool
+	 */
+	private function dismissed_by_current_user() {
+		return (bool) get_user_meta(get_current_user_id(), self::DISMISSED_META_KEY, true);
+	}
+
+	public function dismiss_for_current_user() {
+		update_user_meta(get_current_user_id(), self::DISMISSED_META_KEY, 1);
+	}
+
 	private function htaccess_edited() {
-		require_once(ABSPATH . 'wp-admin/includes/file.php');
+		if (!function_exists('get_home_path')) {
+			require_once(ABSPATH . 'wp-admin/includes/file.php');
+		}
 
 		$file_path = get_home_path() . ".htaccess";
 
