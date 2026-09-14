@@ -4,7 +4,6 @@ defined('ABSPATH') || exit;
 
 class MPW_Htaccess_Check {
 
-	const DISMISSED_META_KEY = 'mpw_htaccess_notice_dismissed';
 	
 	private $polylang_data;
 	
@@ -40,28 +39,34 @@ class MPW_Htaccess_Check {
 		}
 	}
 	
+	/** Set by the migration when Polylang showed the default language in URLs. */
+	const APPLIES_OPTION = 'mpw_htaccess_redirect_needed';
+
 	/**
 	 * The notice is for one kind of site only: Polylang was set to show the default
 	 * language in URLs, so the root redirected to /<default>/ and links to that URL now
-	 * need a redirect back (wpmlbridge-393). It shows on the migration page, once per
-	 * user until dismissed.
+	 * need a redirect back (wpmlbridge-393). The migration records that fact, because the
+	 * cleanup step removes the Polylang options it is read from. The notice then shows on
+	 * every admin screen until an administrator dismisses it or the .htaccess line is there.
 	 *
 	 * @return bool
 	 */
 	public function should_display() {
-		return $this->is_migration_page()
-			&& get_option('mpw_migration_done', false)
-			&& $this->polylang_showed_the_default_language_in_urls()
-			&& !$this->dismissed_by_current_user()
+		return get_option(self::APPLIES_OPTION, false)
 			&& !$this->htaccess_edited();
 	}
 
 	/**
-	 * @return bool
+	 * Called by the migration while the Polylang options are still there.
+	 *
+	 * @return bool Whether the redirect advice applies to this site.
 	 */
-	private function is_migration_page() {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading which admin page renders, not a form.
-		return isset($_GET['page']) && 'polylang-importer' === sanitize_key(wp_unslash($_GET['page']));
+	public function record_whether_it_applies() {
+		$applies = $this->polylang_showed_the_default_language_in_urls();
+
+		update_option(self::APPLIES_OPTION, $applies ? 1 : 0);
+
+		return $applies;
 	}
 
 	/**
@@ -77,15 +82,9 @@ class MPW_Htaccess_Check {
 		return is_array($options) && array_key_exists('hide_default', $options) && !$options['hide_default'];
 	}
 
-	/**
-	 * @return bool
-	 */
-	private function dismissed_by_current_user() {
-		return (bool) get_user_meta(get_current_user_id(), self::DISMISSED_META_KEY, true);
-	}
-
-	public function dismiss_for_current_user() {
-		update_user_meta(get_current_user_id(), self::DISMISSED_META_KEY, 1);
+	/** Site-wide: one administrator's dismissal is everyone's. */
+	public function dismiss() {
+		update_option(self::APPLIES_OPTION, 0);
 	}
 
 	private function htaccess_edited() {
@@ -132,7 +131,7 @@ class MPW_Htaccess_Check {
 	<p>
 		<input type="button" name="" value="<?php esc_attr_e("Check .htaccess again", "migrate-polylang"); ?>" class="button" onClick="window.location.reload();">
 		<input type="button" name="" value="<?php esc_attr_e("Dismiss this notice", "migrate-polylang"); ?>" class="button" id="mpw_htaccess_notice_dismiss">
-		<a href="https://wpml.org/documentation/related-projects/migrate-polylang-wpml/" target="_blank"><?php esc_html_e("More information and other options", "migrate-polylang"); ?></a>
+		<a href="https://wpml.org/documentation/migrate-polylang-wpml/" target="_blank"><?php esc_html_e("More information and other options", "migrate-polylang"); ?></a>
 	</p>
 </div>
 <?php	
