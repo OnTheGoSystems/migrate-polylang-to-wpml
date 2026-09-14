@@ -33,6 +33,9 @@ class mpw_migrate_posts {
 		foreach ($posts_grouped_by_polylang_lang_relation as $relation) {
 
 			$default_language_code = $this->get_default_language_code($relation);
+			if ('' === $default_language_code['wpml']) {
+				continue;
+			}
 
 			$originalPostId = $this->getOriginalPostId( $relation, $default_language_code );
 			if ( ! $originalPostId ) {
@@ -245,6 +248,9 @@ class mpw_migrate_posts {
 			}
 
 			$next_post_language_code_wpml_format = $this->polylang_data->lang_slug_to_wpml_format($next_post_language_code);
+			if ('' === $next_post_language_code_wpml_format) {
+				continue;
+			}
 
 			do_action('wpml_set_element_language_details', array(
 				'element_id'           => $post_id,
@@ -262,7 +268,11 @@ class mpw_migrate_posts {
 		// Polylang's sync map is keyed by its own slugs; make_duplicate() wants a WPML code.
 		foreach ( $sync as $targetLang => $sourceLang ) {
 			if ( $targetLang !== $sourceLang ) {
-				$sitepress->make_duplicate( $originalPostId, $this->polylang_data->lang_slug_to_wpml_format( $targetLang ) );
+				$target_language_code = $this->polylang_data->lang_slug_to_wpml_format( $targetLang );
+
+				if ( '' !== $target_language_code ) {
+					$sitepress->make_duplicate( $originalPostId, $target_language_code );
+				}
 			}
 		}
 	}

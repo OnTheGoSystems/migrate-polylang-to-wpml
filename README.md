@@ -12,7 +12,7 @@ Import multilingual data from Polylang to WPML
 - Done. You can uninstall the (Migrate Polylang to WPML) plugin.
 
 # What this plugin does 
-- Configures WPML to have the same languages as they were in Polylang.
+- Checks that every language you had in Polylang is active in WPML, and stops with a list of the missing ones. Select the same languages in the WPML wizard.
 - Migrates all your posts, pages and custom post types and their translations.
 - Migrates all your taxonomies (categories, tags and custom taxonomies) and their translations.
 - Migrates your strings (only those which has been translated in Polylang and WPMl String Translation recognized and registered as correct string)
@@ -45,6 +45,11 @@ The individual commands are `composer test`, `composer phpcs`, and `composer php
 CI runs the unit tests on the supported endpoints, PHP 7.4 and 8.5. Coding standards and static analysis run on PHP 8.5.
 
 # Changelog
+
+## 5.0.0
+- Map every Polylang language to its WPML code by locale instead of by slug, so custom slugs, Traditional Chinese, Norwegian and regional variants (es_MX, pt_BR) reach the right language. Unmatched languages are reported instead of written under an unknown code.
+- The migration no longer activates WPML languages by itself. It checks that every Polylang language is active in WPML and stops with a list of the missing ones, so content only ever lands in languages selected in the WPML wizard.
+- On WPML 5.0, where a locale can match a legacy code and a preset code (`en` and `en-us`), prefer the language the site activated in the WPML wizard, then the code WPML 5.0 offers for that locale. Content and string translations no longer land in a second, unchosen language (wpmlbridge-391).
 
 ## 0.5.2
 - Fixed taxonomy migration for languages whose Polylang slugs differ from their WPML language codes, including Portuguese and Chinese.

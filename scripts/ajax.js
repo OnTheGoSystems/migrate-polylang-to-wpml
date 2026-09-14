@@ -8,6 +8,11 @@ jQuery(document).ready(function( $ ) {
 		$('#mpw_ajax_result').append("<div>"+mpw_ajax_str.lan_start+"</div>");
 		$.post(ajaxurl,{'action':'mpw_migrate_languages','nonce':mpw_ajax_str.nonce})
 				.done(function(resp){ 
+					if (!resp.success) {
+						$('#mpw_ajax_result').append("<div style='color:red;font-weight:bold'>"+resp.data.msg+"</div>");
+						$('#migrate_polylang_wpml').prop('disabled', false);
+						return;
+					}
 					$('#mpw_ajax_result').append("<div>"+resp.data.msg+"</div>");
 					$('#mpw_ajax_result').append("<div>"+mpw_ajax_str.posts_start+"</div>");
 					$.post(ajaxurl,{'action':'mpw_migrate_posts','nonce':mpw_ajax_str.nonce})
