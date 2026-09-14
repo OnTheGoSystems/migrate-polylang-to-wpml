@@ -9,4 +9,6 @@ require_once __DIR__ . '/includes/class-language-mapping-wpdb.php';
 require_once __DIR__ . '/includes/class-string-storage-wpdb.php';
 require_once __DIR__ . '/includes/class-polylang-data-wpdb.php';
 require_once ABSPATH . 'classes/class-mpw_polylang_data.php';
+require_once __DIR__ . '/includes/wp-admin-file-functions.php';
+require_once ABSPATH . 'classes/class-mpw_htaccess_check.php';
 require_once ABSPATH . 'classes/class-mpw_polylang_string_storage.php';
