@@ -47,7 +47,7 @@ CI runs the unit tests on the supported endpoints, PHP 7.4 and 8.5. Coding stand
 # Changelog
 
 ## 5.0.0
-- The .htaccess notice about the old default-language redirect shows only on sites where Polylang showed the default language in URLs, only on the migration page, and stays dismissed per user (wpmlbridge-393).
+- The .htaccess notice about the old default-language redirect shows only on sites where Polylang showed the default language in URLs, and one dismissal hides it for everyone (wpmlbridge-393).
 - Removed two unused tooltip theme files; the tooltip stylesheet is versioned with the plugin.
 - Map every Polylang language to its WPML code by locale instead of by slug, so custom slugs, Traditional Chinese, Norwegian and regional variants (es_MX, pt_BR) reach the right language. Unmatched languages are reported instead of written under an unknown code.
 - The migration no longer activates WPML languages by itself. It checks that every Polylang language is active in WPML and stops with a list of the missing ones, so content only ever lands in languages selected in the WPML wizard.

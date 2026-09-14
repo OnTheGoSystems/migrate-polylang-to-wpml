@@ -8,85 +8,90 @@ class TestHtaccessCheck extends OTGS_TestCase {
 
 		$this->home = sys_get_temp_dir() . '/mpw-htaccess-' . uniqid() . '/';
 		mkdir( $this->home ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir -- A scratch directory for the test only.
-
-		$_GET['page'] = 'polylang-importer';
+		$GLOBALS['mpw_test_home_path'] = $this->home;
 
 		WP_Mock::userFunction( 'get_bloginfo', array( 'return' => 'https://example.test' ) );
-		$GLOBALS['mpw_test_home_path'] = $this->home;
 		WP_Mock::userFunction( 'get_current_user_id', array( 'return' => 7 ) );
-		WP_Mock::userFunction( 'sanitize_key', array( 'return_arg' => 0 ) );
-		WP_Mock::userFunction( 'wp_unslash', array( 'return_arg' => 0 ) );
 	}
 
 	public function tearDown(): void {
-		unset( $_GET['page'] );
 		rmdir( $this->home ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- The scratch directory of this test.
 		parent::tearDown();
 	}
 
-	public function test_it_shows_when_polylang_showed_the_default_language_in_urls(): void {
-		$this->dismissed( false );
-		$this->options(
+	public function test_the_migration_records_that_polylang_showed_the_default_language_in_urls(): void {
+		$this->options( array( 'polylang' => array( 'hide_default' => false ) ) );
+		WP_Mock::userFunction(
+			'update_option',
 			array(
-				'mpw_migration_done' => 1,
-				'polylang'           => array( 'hide_default' => false ),
+				'times' => 1,
+				'args'  => array( MPW_Htaccess_Check::APPLIES_OPTION, 1 ),
 			)
 		);
+
+		$this->assertTrue( $this->subject()->record_whether_it_applies() );
+	}
+
+	public function test_the_migration_records_nothing_to_do_with_polylang_default_setting(): void {
+		$this->options( array( 'polylang' => array( 'hide_default' => true ) ) );
+		WP_Mock::userFunction(
+			'update_option',
+			array(
+				'times' => 1,
+				'args'  => array( MPW_Htaccess_Check::APPLIES_OPTION, 0 ),
+			)
+		);
+
+		$this->assertFalse( $this->subject()->record_whether_it_applies() );
+	}
+
+	public function test_the_migration_records_nothing_to_do_without_polylang_options(): void {
+		$this->options( array( 'polylang' => false ) );
+		WP_Mock::userFunction(
+			'update_option',
+			array(
+				'times' => 1,
+				'args'  => array( MPW_Htaccess_Check::APPLIES_OPTION, 0 ),
+			)
+		);
+
+		$this->assertFalse( $this->subject()->record_whether_it_applies() );
+	}
+
+	public function test_it_shows_while_the_redirect_is_needed(): void {
+		$this->options( array( MPW_Htaccess_Check::APPLIES_OPTION => 1 ) );
 
 		$this->assertTrue( $this->subject()->should_display() );
 	}
 
-	public function test_it_stays_silent_with_polylang_default_setting(): void {
-		$this->dismissed( false );
-		$this->options(
-			array(
-				'mpw_migration_done' => 1,
-				'polylang'           => array( 'hide_default' => true ),
-			)
-		);
+	public function test_it_stays_silent_when_the_migration_recorded_nothing_to_do(): void {
+		$this->options( array( MPW_Htaccess_Check::APPLIES_OPTION => 0 ) );
 
 		$this->assertFalse( $this->subject()->should_display() );
 	}
 
-	public function test_it_stays_silent_when_polylang_data_is_gone(): void {
-		$this->dismissed( false );
-		$this->options(
+	public function test_dismissing_it_is_site_wide(): void {
+		$this->options( array( MPW_Htaccess_Check::APPLIES_OPTION => 1 ) );
+		WP_Mock::userFunction(
+			'update_option',
 			array(
-				'mpw_migration_done' => 1,
-				'polylang'           => false,
+				'times' => 1,
+				'args'  => array( MPW_Htaccess_Check::APPLIES_OPTION, 0 ),
 			)
 		);
 
-		$this->assertFalse( $this->subject()->should_display() );
+		$this->expectNotToPerformAssertions();
+
+		$this->subject()->dismiss();
 	}
 
-	public function test_it_shows_only_on_the_migration_page(): void {
-		$this->dismissed( false );
-		$_GET['page'] = 'plugins';
-		$this->options(
-			array(
-				'mpw_migration_done' => 1,
-				'polylang'           => array( 'hide_default' => false ),
-			)
-		);
+	public function test_it_stops_once_the_htaccess_line_is_there(): void {
+		$this->options( array( MPW_Htaccess_Check::APPLIES_OPTION => 1 ) );
+		file_put_contents( $this->home . '.htaccess', "RedirectMatch 301 /en/$ https://example.test/index.php\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- The scratch .htaccess of this test.
 
 		$this->assertFalse( $this->subject()->should_display() );
-	}
 
-	public function test_it_stays_dismissed_for_the_user(): void {
-		$this->dismissed( true );
-		$this->options(
-			array(
-				'mpw_migration_done' => 1,
-				'polylang'           => array( 'hide_default' => false ),
-			)
-		);
-
-		$this->assertFalse( $this->subject()->should_display() );
-	}
-
-	private function dismissed( bool $dismissed ): void {
-		WP_Mock::userFunction( 'get_user_meta', array( 'return' => $dismissed ? '1' : '' ) );
+		unlink( $this->home . '.htaccess' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- The scratch .htaccess of this test.
 	}
 
 	private function options( array $options ): void {

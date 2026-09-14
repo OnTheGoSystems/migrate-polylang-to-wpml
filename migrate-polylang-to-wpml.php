@@ -101,8 +101,10 @@ class Migrate_Polylang_To_WPML {
 			wp_enqueue_style('migrate-tooltips-css');
 		}
 
+
 		if ($this->mpw_htaccess_check->should_display()) {
-			wp_register_script('migrate-htaccess',  plugins_url('scripts/htaccess.js', __FILE__), array('migrate-ajax'), self::VERSION, true);
+			wp_register_script('migrate-htaccess',  plugins_url('scripts/htaccess.js', __FILE__), array('jquery'), self::VERSION, true);
+			wp_localize_script('migrate-htaccess', 'mpw_htaccess', array('nonce' => wp_create_nonce(self::NONCE_ACTION)));
 			wp_enqueue_script('migrate-htaccess');
 		}
 	}
@@ -464,12 +466,13 @@ $text = "
 			);
 		}
 		update_option('mpw_migration_done', 1);
+		$this->mpw_htaccess_check->record_whether_it_applies();
 		wp_send_json_success($response);
 	}
 
 	public function ajax_dismiss_htaccess_notice() {
 		$this->verify_ajax_request();
-		$this->mpw_htaccess_check->dismiss_for_current_user();
+		$this->mpw_htaccess_check->dismiss();
 		wp_send_json_success();
 	}
 
