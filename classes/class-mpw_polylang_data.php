@@ -7,11 +7,25 @@
 defined('ABSPATH') || exit;
 
 class mpw_polylang_data {
-	
+
 	private static $terms;
-	
+
+	/**
+	 * Resolved Polylang slug => WPML language code, for the life of the request.
+	 *
+	 * @var array
+	 */
+	private $wpml_code_cache = array();
+
+	/**
+	 * Polylang slug => locale, for languages that resolved to a code WPML does not know.
+	 *
+	 * @var array
+	 */
+	private $unmapped_languages = array();
+
 	public function __construct() {
-		
+
 	}
 	
 	public function get_languages() {
@@ -134,6 +148,21 @@ class mpw_polylang_data {
 		return $polylang_languages_map;
 	}
 	
+	/**
+	 * Translates a Polylang language slug into the WPML language code.
+	 *
+	 * Both Polylang slugs and WPML codes can be customised independently. The dependable bridge
+	 * between them is the locale: Polylang keeps it in the `language` term's serialised
+	 * description, and WPML keeps it in `icl_languages.default_locale`, with per-site overrides
+	 * in `icl_locale_map`.
+	 *
+	 * WPML resolves a code to a locale in WPML_Locale::get_all_locales() by preferring the override
+	 * and falling back to the default. This runs that same lookup backwards.
+	 *
+	 * @param mixed $slug
+	 *
+	 * @return string A WPML language code, or an empty string for unusable input.
+	 */
 	public function lang_slug_to_wpml_format($slug) {
 
 		if (!is_scalar($slug)) {
@@ -142,26 +171,193 @@ class mpw_polylang_data {
 
 		$slug = (string) $slug;
 
-		$different = array(
-			'pt' => 'pt-pt',
-			'zh' => 'zh-hans'
-		);
+		if ('' === $slug) {
+			return '';
+		}
 
-		$languages = $this->get_languages();
+		if (!array_key_exists($slug, $this->wpml_code_cache)) {
+			$this->wpml_code_cache[$slug] = $this->resolve_wpml_code($slug);
+		}
 
-		foreach ($languages as $language) {
-			if (isset($language->slug, $language->description) && $language->slug === 'pt') {
-				$pt_language_details = maybe_unserialize($language->description);
-				if (is_array($pt_language_details) && isset($pt_language_details['locale']) && $pt_language_details['locale'] === "pt_BR") {
-					$different['pt'] = 'pt-br';
-				}
+		return $this->wpml_code_cache[$slug];
+	}
+
+	/**
+	 * Languages whose locale could not be mapped unambiguously to a WPML language.
+	 *
+	 * A Polylang slug and a WPML code may happen to be equal, but that is not evidence that they
+	 * represent the same language. Callers receive an empty code for these entries so they do not
+	 * write an unsupported or incorrect language into WPML.
+	 *
+	 * @return array Polylang slug => locale (empty string when Polylang had no locale either).
+	 */
+	public function get_unmapped_languages() {
+		return $this->unmapped_languages;
+	}
+
+	/**
+	 * @param string $slug
+	 *
+	 * @return string
+	 */
+	private function resolve_wpml_code($slug) {
+		$locale = $this->get_locale_for_slug($slug);
+
+		if ('' !== $locale) {
+			$code = $this->wpml_code_for_locale($locale);
+
+			if ('' !== $code) {
+				return $code;
 			}
 		}
-		if (isset($different[$slug])) {
-			$slug = $different[$slug];
+
+		$this->unmapped_languages[$slug] = $locale;
+
+		return '';
+	}
+
+	/**
+	 * @param string $slug
+	 *
+	 * @return string The locale Polylang recorded for this language, or an empty string.
+	 */
+	private function get_locale_for_slug($slug) {
+		foreach ($this->get_languages() as $language) {
+			if (!isset($language->slug) || $language->slug !== $slug) {
+				continue;
+			}
+
+			if (!isset($language->description)) {
+				return '';
+			}
+
+			// Polylang serialises the language details into the term description.
+			// Read it without ever building an object from that column.
+			$details = is_serialized($language->description)
+				? unserialize($language->description, array('allowed_classes' => false))
+				: $language->description;
+
+			if (is_array($details) && isset($details['locale']) && is_string($details['locale'])) {
+				return $details['locale'];
+			}
+
+			return '';
 		}
-		
-		return $slug;
+
+		return '';
+	}
+
+	/**
+	 * The Polylang languages the migration cannot write to: their locale matches no WPML
+	 * language, or the WPML language is not active. The site owner adds them in the WPML
+	 * wizard or under WPML > Languages; the migration never activates a language itself.
+	 *
+	 * @return array Polylang language name => locale.
+	 */
+	public function get_languages_not_active_in_wpml() {
+		$missing = array();
+
+		foreach ($this->get_languages() as $language) {
+			if (!isset($language->slug)) {
+				continue;
+			}
+
+			$code = $this->lang_slug_to_wpml_format($language->slug);
+
+			if ('' === $code || !$this->is_wpml_language_active($code)) {
+				$name = isset($language->name) ? (string) $language->name : (string) $language->slug;
+				$missing[$name] = $this->get_locale_for_slug($language->slug);
+			}
+		}
+
+		return $missing;
+	}
+
+	/**
+	 * @param string $code
+	 *
+	 * @return bool
+	 */
+	private function is_wpml_language_active($code) {
+		global $wpdb;
+
+		return (bool) $wpdb->get_var($wpdb->prepare(
+			"SELECT active FROM {$wpdb->prefix}icl_languages WHERE code = %s",
+			$code
+		));
+	}
+
+	/**
+	 * @param string $locale
+	 *
+	 * @return string The WPML code for this locale, or an empty string.
+	 */
+	private function wpml_code_for_locale($locale) {
+		global $wpdb;
+
+		if (!$this->wpml_tables_available()) {
+			return '';
+		}
+
+		// WPML 5.0 keeps the legacy row of a language next to its preset row
+		// (`en` and `en-us`, both en_US), so a locale can match several codes.
+		// The active one is the language the site owner chose in the WPML wizard
+		// and is the only correct target for content (wpmlbridge-391).
+		$rows = $wpdb->get_results($wpdb->prepare(
+			"SELECT languages.code, languages.active
+			FROM {$wpdb->prefix}icl_languages languages
+			LEFT JOIN {$wpdb->prefix}icl_locale_map locale_map ON locale_map.code = languages.code
+			WHERE COALESCE(locale_map.locale, languages.default_locale) = %s
+			ORDER BY languages.active DESC, languages.code",
+			$locale
+		));
+
+		if (empty($rows)) {
+			return '';
+		}
+
+		if (!empty($rows[0]->active)) {
+			return (string) $rows[0]->code;
+		}
+
+		$codes = array_map('strval', array_column($rows, 'code'));
+
+		$preset = $this->preset_code_for_locale($locale);
+
+		if ('' !== $preset && in_array($preset, $codes, true)) {
+			return $preset;
+		}
+
+		return $codes[0];
+	}
+
+	/**
+	 * The code WPML 5.0 itself offers for a locale when the site adds that language.
+	 *
+	 * Read from the preset catalogue that ships with 5.0. A core without the table
+	 * (4.9 and older) has one code per locale and needs no tie-break.
+	 *
+	 * @param string $locale
+	 *
+	 * @return string A WPML code, or an empty string.
+	 */
+	private function preset_code_for_locale($locale) {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'icl_language_preset_countries';
+
+		if ($wpdb->get_var("SHOW TABLES LIKE '" . $wpdb->esc_like($table) . "'") !== $table) {
+			return '';
+		}
+
+		return (string) $wpdb->get_var($wpdb->prepare(
+			"SELECT code FROM {$table} WHERE default_locale = %s AND is_default = 1 ORDER BY code LIMIT 1",
+			$locale
+		));
+	}
+
+	private function wpml_tables_available() {
+		return defined('ICL_SITEPRESS_VERSION');
 	}
 	
 	

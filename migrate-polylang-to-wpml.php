@@ -18,6 +18,9 @@ class Migrate_Polylang_To_WPML {
 	/**
 	 * Nonce action shared by every AJAX endpoint of this plugin.
 	 */
+	/** Keep in step with the Version header; it is the cache key of the plugin's scripts. */
+	const VERSION = '5.0.0';
+
 	const NONCE_ACTION = 'mpw_migrate';
 
 	/**
@@ -54,16 +57,16 @@ class Migrate_Polylang_To_WPML {
 
 	public function enqueue_scripts() {
 		if ($this->pre_check_ready_all()) {
-			wp_register_script('migrate-enabling-script', plugins_url('scripts/enabling.js', __FILE__), array('jquery'), '', true);
+			wp_register_script('migrate-enabling-script', plugins_url('scripts/enabling.js', __FILE__), array('jquery'), self::VERSION, true);
 			wp_enqueue_script('migrate-enabling-script');
 
 
-			wp_register_script('migrate-ajax',  plugins_url('scripts/ajax.js', __FILE__), array('jquery'), '', true);
+			wp_register_script('migrate-ajax',  plugins_url('scripts/ajax.js', __FILE__), array('jquery'), self::VERSION, true);
 			$ajax_strings_translations = array(
 				'nonce' => wp_create_nonce(self::NONCE_ACTION),
 
 				'mig_start' => __("Migration started, please don't close this window...", 'migrate-polylang'),
-				'lan_start' => __("Moving your language settings...", 'migrate-polylang'),
+				'lan_start' => __("Checking your languages...", 'migrate-polylang'),
 				'posts_start' => __("Setting languages for posts...", 'migrate-polylang'),
 				'tax_start' => __("Settings languages for taxonomies...", 'migrate-polylang'),
 				'str_start' => __("Translating strings (only if WPML String Translation is activated)...", 'migrate-polylang'),
@@ -79,10 +82,10 @@ class Migrate_Polylang_To_WPML {
 		}
 
 		if (is_admin() && !$this->pre_check_wizard_complete()) {
-			wp_register_script('migrate-tooltips',  plugins_url('tooltips/js/helpcursor-min.js', __FILE__), array('jquery'), '', true);
+			wp_register_script('migrate-tooltips',  plugins_url('tooltips/js/helpcursor-min.js', __FILE__), array('jquery'), self::VERSION, true);
 			wp_enqueue_script('migrate-tooltips');
 
-			wp_register_script('migrate-tooltips-uses',  plugins_url('scripts/tooltips.js', __FILE__), array('migrate-tooltips'), '', true);
+			wp_register_script('migrate-tooltips-uses',  plugins_url('scripts/tooltips.js', __FILE__), array('migrate-tooltips'), self::VERSION, true);
 
 			$tooltips_texts = array(
 				'before_mig' => __('Before migrating Polylang, please finish WPML wizard', 'migrate-polylang'),
@@ -98,7 +101,7 @@ class Migrate_Polylang_To_WPML {
 		}
 
 		if (is_admin()) {
-			wp_register_script('migrate-htaccess',  plugins_url('scripts/htaccess.js', __FILE__), array('jquery'), '', true);
+			wp_register_script('migrate-htaccess',  plugins_url('scripts/htaccess.js', __FILE__), array('jquery'), self::VERSION, true);
 			wp_enqueue_script('migrate-htaccess');
 		}
 	}
@@ -242,7 +245,7 @@ endif; ?>
 	private function introduction_text() {
 	$text = "<h3>".__("During migration this plugin will:", "migrate-polylang")."</h3>";
 	$text .= "<ul>";
-	$text .= "<li><strong>".__("Migrate languages.", "migrate-polylang")."</strong> ".__("It will check what languages were active in Polylang and it will activate them in WPML.")."</li>";
+	$text .= "<li><strong>".__("Check languages.", "migrate-polylang")."</strong> ".__("It will check that every language you had in Polylang is active in WPML, and stop with a list of the missing ones. Add them under WPML > Languages first.", "migrate-polylang")."</li>";
 	$text .= "<li><strong>".__("Migrate posts.", "migrate-polylang")."</strong> ".__("Plugin will set correct language for every post and join each other in language relation. This includes also Pages and other custom post types.")."</li>";
 	$text .= "<li><strong>".__("Migrate taxonomies.", "migrate-polylang")."</strong> ".__("Similar like with posts: your every category, tag and other custom taxonomies will get correct language assigment and language relation.")."</li>";
 	$text .= "<li><strong>".__("Migrate admin strings (only if you are using WPML String Translation).", "migrate-polylang")."</strong> ".__("Plugin will try to find if you have translated any admin string in Polylang and it will try to migrate this translation to WPML. Bear in mind that this probably will not migrate every string - this is because Polylang is handling string translation in much different way than WPML")."</li>";
@@ -341,13 +344,49 @@ $text = "
 		return true;
 	}
 
+	/**
+	 * Refuses a content step while a Polylang language has no active WPML language.
+	 * The languages step reports the same list to the page; this guard holds even when
+	 * that page is stale or the request comes from elsewhere.
+	 */
+	private function ensure_languages_are_active() {
+		$missing = $this->polylang_data->get_languages_not_active_in_wpml();
+
+		if ($missing) {
+			wp_send_json_error(array('msg' => $this->missing_languages_message($missing)));
+		}
+	}
+
+	/**
+	 * @param array $missing Polylang language name => locale.
+	 *
+	 * @return string
+	 */
+	private function missing_languages_message(array $missing) {
+		$listed = array();
+		foreach ($missing as $name => $locale) {
+			$listed[] = '' === $locale ? $name : "$name ($locale)";
+		}
+
+		return esc_html(sprintf(
+			/* translators: %s: comma-separated list of Polylang language names with their locales */
+			__("These Polylang languages are not active in WPML: %s. Add them under WPML > Languages, then run the migration again. Nothing was migrated.", 'migrate-polylang'),
+			implode(', ', $listed)
+		));
+	}
+
 	public function ajax_migrate_languages() {
 		$this->verify_ajax_request();
 
 		if ($this->pre_check_ready_all()) {
-			$this->migrate_languages();
+			$missing = $this->migrate_languages();
+
+			if ($missing) {
+				wp_send_json_error(array('msg' => $this->missing_languages_message($missing)));
+			}
+
 			$response = array(
-				'msg' => __("Language settings has been migrated", 'migrate-polylang'),
+				'msg' => __("Language settings has been checked", 'migrate-polylang'),
 				'res' => 'ok'
 			);
 			wp_send_json_success($response);
@@ -356,6 +395,7 @@ $text = "
 
 	public function ajax_migrate_posts() {
 		$this->verify_ajax_request();
+		$this->ensure_languages_are_active();
 
 		if ($this->pre_check_ready_all()) {
 			// Clear stale WPML relation rows before the posts migration reads the
@@ -375,6 +415,7 @@ $text = "
 
 	public function ajax_migrate_taxonomies() {
 		$this->verify_ajax_request();
+		$this->ensure_languages_are_active();
 
 		if ($this->pre_check_ready_all()) {
 			$this->migrate_taxonomies();
@@ -388,6 +429,7 @@ $text = "
 
 	public function ajax_migrate_strings() {
 		$this->verify_ajax_request();
+		$this->ensure_languages_are_active();
 
 		if ($this->pre_check_ready_all() && $this->pre_check_wpml_st()) {
 			$this->migrate_strings();
@@ -406,6 +448,7 @@ $text = "
 
 	public function ajax_migrate_widgets() {
 		$this->verify_ajax_request();
+		$this->ensure_languages_are_active();
 
 		if ($this->pre_check_ready_all() && $this->pre_check_wpml_widgets()) {
 			$this->migrate_widgets();
@@ -434,27 +477,20 @@ $text = "
 		wp_send_json_success($response);
 	}
 
+	/**
+	 * The migration writes content only to languages the site owner activated in WPML,
+	 * so the wizard's language choice is the contract (wpmlbridge-391). It used to
+	 * activate WPML languages by code itself, which on WPML 5.0 left them without the
+	 * settings the wizard writes.
+	 *
+	 * @return array Polylang language name => locale, for the languages WPML lacks. Empty when all are active.
+	 */
 	private function migrate_languages() {
-		global $wpdb;
-
 		// Clear stale WPML language-relation rows before reading the Polylang
 		// languages. This used to happen inside get_languages().
 		$this->polylang_data->reset_translations('language');
 
-		$pll_languages = $this->polylang_data->get_languages();
-
-		if (!empty($pll_languages) && is_array($pll_languages)) {
-			foreach ($pll_languages as $pll_language) {
-				if (isset($pll_language->slug)) {
-					$slug = $this->polylang_data->lang_slug_to_wpml_format($pll_language->slug);
-					$wpdb->update(
-							$wpdb->prefix . 'icl_languages',
-							array('active' => 1),
-							array('code' => $slug)
-							);
-				}
-			}
-		}
+		return $this->polylang_data->get_languages_not_active_in_wpml();
 	}
 
 	/**
@@ -512,6 +548,10 @@ $text = "
 			$element_type = apply_filters('wpml_element_type', $original_term->taxonomy);
 			$original_language_code = $this->polylang_data->lang_slug_to_wpml_format($original_slug);
 
+			if ('' === $original_language_code) {
+				continue;
+			}
+
 			do_action('wpml_set_element_language_details', array(
 				'element_id' => $original_term->term_taxonomy_id,
 				'element_type' => $element_type,
@@ -536,8 +576,9 @@ $text = "
 
 			foreach ($relation as $translation_slug => $term_id) {
 				$translated_term = $this->get_term_by_term_id($term_id);
+				$translation_language_code = $this->polylang_data->lang_slug_to_wpml_format($translation_slug);
 
-				if (!isset($translated_term->term_taxonomy_id)) {
+				if (!isset($translated_term->term_taxonomy_id) || '' === $translation_language_code) {
 					continue;
 				}
 
@@ -545,7 +586,7 @@ $text = "
 					'element_id' => $translated_term->term_taxonomy_id,
 					'element_type' => $element_type,
 					'trid' => $trid,
-					'language_code' => $this->polylang_data->lang_slug_to_wpml_format($translation_slug),
+					'language_code' => $translation_language_code,
 					'source_language_code' => $original_language_code
 				));
 			}
@@ -728,7 +769,11 @@ $text = "
 				if ($option && is_array($option)) {
 					foreach ($option as $key => $val) {
 						if (is_numeric($key) && is_array($val) && isset($val['pll_lang'])) {
-							$option[$key]['wpml_language'] = $this->polylang_data->lang_slug_to_wpml_format($val['pll_lang']);
+							$language_code = $this->polylang_data->lang_slug_to_wpml_format($val['pll_lang']);
+
+							if ('' !== $language_code) {
+								$option[$key]['wpml_language'] = $language_code;
+							}
 						}
 					}
 					update_option($widget->option_name, $option);
