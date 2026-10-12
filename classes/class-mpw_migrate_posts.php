@@ -74,20 +74,35 @@ class mpw_migrate_posts {
 		$pll_post_translations       = $this->polylang_data->get_post_translations();
 		$posts_per_polylang_language = $this->posts_per_polylang_language();
 		$relations                   = [];
-
+		$claimed_post_ids            = [];
 
 		foreach ($pll_post_translations as $pll_post_translation) {
 			$relationCandidate = maybe_unserialize( $pll_post_translation->description );
 			if ( is_array( $relationCandidate ) ) {
 				$relations[] = $relationCandidate;
+
+				foreach ( $relationCandidate as $post_id ) {
+					if ( is_numeric( $post_id ) ) {
+						$claimed_post_ids[ (int) $post_id ] = true;
+					}
+				}
 			}
 		}
 
-		foreach($posts_per_polylang_language as $code => $id ){
-			foreach($id as $value){
-				if($this->in_array_r($value, $relations) === FALSE){
-						$relations[] = array($code => $value, 'language_code' => $code);
+		// A post that has a language but sits in no translation group becomes a group of its
+		// own. Each one is looked up in an index of the IDs already claimed; scanning every
+		// relation for every post was quadratic in the number of posts.
+		foreach ( $posts_per_polylang_language as $code => $post_ids ) {
+			foreach ( $post_ids as $post_id ) {
+				if ( isset( $claimed_post_ids[ (int) $post_id ] ) ) {
+					continue;
 				}
+
+				$relations[] = array( $code => $post_id, 'language_code' => $code );
+
+				// The scan also searched the groups it had just added, so a post attached to
+				// two language terms was only ever added once. Claiming it here keeps that.
+				$claimed_post_ids[ (int) $post_id ] = true;
 			}
 		}
 
@@ -115,15 +130,6 @@ class mpw_migrate_posts {
 		}
 
 		return $posts;
-	}
-
-	private function in_array_r($needle, $haystack, $strict = false) {
-	    foreach ($haystack as $item) {
-	        if (($strict ? $item === $needle : $item == $needle) || (is_array($item) && $this->in_array_r($needle, $item, $strict))) {
-	            return true;
-	        }
-	    }
-	    return false;
 	}
 
 	private function get_default_language_code($relation) {
