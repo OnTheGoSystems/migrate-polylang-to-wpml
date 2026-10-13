@@ -12,3 +12,6 @@ require_once ABSPATH . 'classes/class-mpw_polylang_data.php';
 require_once __DIR__ . '/includes/wp-admin-file-functions.php';
 require_once ABSPATH . 'classes/class-mpw_htaccess_check.php';
 require_once ABSPATH . 'classes/class-mpw_polylang_string_storage.php';
+require_once __DIR__ . '/includes/class-wpml-widgets-support-frontend.php';
+require_once __DIR__ . '/includes/wp-is-admin-function.php';
+require_once ABSPATH . 'migrate-polylang-to-wpml.php';
