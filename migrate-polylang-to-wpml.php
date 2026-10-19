@@ -671,6 +671,14 @@ $text = "
 
 	}
 
+	/**
+	 * The strings WPML String Translation has registered, by language and by text.
+	 *
+	 * One text can be registered several times, by a theme and by a plugin for instance,
+	 * so every text holds a list.
+	 *
+	 * @return array WPML code => string value => list of rows.
+	 */
 	private function get_wpml_string_translations() {
 		global $wpdb;
 
@@ -684,7 +692,7 @@ $text = "
 
 		if ($results) {
 			foreach($results as $string) {
-				$langcode_indexed[$string->language][$string->value] = $string;
+				$langcode_indexed[$string->language][$string->value][] = $string;
 			}
 		}
 
@@ -714,7 +722,7 @@ $text = "
 	 * @param int   $lang_id                  A `language` taxonomy term ID.
 	 * @param array $string_groups            List of array($source, $translation).
 	 * @param array $polylang_languages_map   language term_id => Polylang slug.
-	 * @param array $wpml_string_translations WPML code => string value => row.
+	 * @param array $wpml_string_translations WPML code => string value => list of rows.
 	 */
 	private function migrate_string_groups($lang_id, $string_groups, $polylang_languages_map, $wpml_string_translations) {
 		if (!isset($polylang_languages_map[$lang_id]) || !function_exists('icl_add_string_translation')) {
@@ -748,12 +756,16 @@ $text = "
 					continue;
 				}
 
-				icl_add_string_translation(
-					$wpml_string_translations[$registered_language][$registered_value]->id,
-					$target_language,
-					$target_value,
-					$status
-				);
+				// Polylang translated a text wherever it appeared, so every registration of it
+				// in WPML gets the translation.
+				foreach ($wpml_string_translations[$registered_language][$registered_value] as $registered_string) {
+					icl_add_string_translation(
+						$registered_string->id,
+						$target_language,
+						$target_value,
+						$status
+					);
+				}
 
 				break;
 			}
