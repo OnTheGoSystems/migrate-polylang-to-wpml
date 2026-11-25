@@ -2,29 +2,29 @@
 Import multilingual data from Polylang to WPML
 
 # Installation and usage
-- Backup your database! There is a reason why this plugin has the version number 0.1
+- Back up your database before you migrate.
 - Deactivate Polylang.
-- Activate both WPML Multilingual Blog/CMS and the (Migrate Polylang to WPML) plugins. If you also want to migrate string translations, activate WPML String Translation plugin.
-- Finish the WPML Wizard (you will see it right after activation)
-- If you have custom post types, go to WPML > Translation options (or WPML > Translation Management > Multilingual Content Setup) and set those types to be translatable.
+- Activate WPML and the Migrate Polylang to WPML plugin. If you also want to migrate string translations, activate WPML String Translation.
+- Finish the WPML setup wizard (you see it right after activation). Select the same languages that you used in Polylang.
+- The plugin sets custom post types that have translations in Polylang to translatable. For other custom post types, go to WPML > Settings > Post Types Translation.
 - Go to Tools > Migrate from Polylang to WPML
-- Click button "Migrate" and wait until the migration process is completed (it might take longer based on the size of the content you are migrating)
-- Done. You can uninstall the (Migrate Polylang to WPML) plugin.
+- Click "Migrate" and wait until the migration is complete. A large site takes longer.
+- Done. You can uninstall the Migrate Polylang to WPML plugin.
 
 # What this plugin does 
 - Checks that every language you had in Polylang is active in WPML, and stops with a list of the missing ones. Select the same languages in the WPML wizard.
 - Migrates all your posts, pages and custom post types and their translations.
 - Migrates all your taxonomies (categories, tags and custom taxonomies) and their translations.
-- Migrates your strings (only those which has been translated in Polylang and WPMl String Translation recognized and registered as correct string)
-- Migrate widgets: You will need to activate [WPML Widgets](https://wordpress.org/plugins/wpml-widgets/) plugin.
+- Migrates your string translations, for the strings that WPML String Translation has registered.
+- Migrates the language that you set for a widget in Polylang.
 
 # What this plugin doesn't (yet)
-- Migrate menus: Use the  menu synchronization between languages option in WPML.
+- Migrate menus: Use the menu synchronization between languages option in WPML.
 - Migrate other settings: This will be implemented progressively. For the time being, you are free to adjust them manually after the migration process is completed.
 
 # Support and feedback
 - please report any issue or feature request at [WPML forum ](https://wpml.org/forums/forum/english-support/)
-- please check [Wiki page](https://github.com/OnTheGoSystems/migrate-polylang-to-wpml/wiki) for known issues
+- Read the [documentation](https://wpml.org/documentation/migrate-polylang-wpml/).
 
 # Development
 
@@ -45,6 +45,12 @@ The individual commands are `composer test`, `composer phpcs`, and `composer php
 CI runs the unit tests on the supported endpoints, PHP 7.4 and 8.5. Coding standards and static analysis run on PHP 8.5.
 
 # Changelog
+
+## Unreleased
+- The widgets step runs with WPML alone. The separate WPML Widgets plugin is not needed anymore (#51, wpmldev-8892).
+- A Polylang string translation goes to every WPML registration of the same text, not only to the first one (#52).
+- Faster grouping of posts into translation groups on large sites (#50).
+- The migration page no longer names the WPML Widgets plugin, and the documentation link points to the current page (wpmldev-8892).
 
 ## 5.0.0
 - The .htaccess notice about the old default-language redirect shows only on sites where Polylang showed the default language in URLs, and one dismissal hides it for everyone (wpmlbridge-393).
