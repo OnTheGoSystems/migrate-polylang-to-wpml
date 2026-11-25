@@ -62,7 +62,7 @@ class Migrate_Polylang_To_WPML {
 				'posts_start' => __("Setting languages for posts...", 'migrate-polylang'),
 				'tax_start' => __("Settings languages for taxonomies...", 'migrate-polylang'),
 				'str_start' => __("Translating strings (only if WPML String Translation is activated)...", 'migrate-polylang'),
-				'widg_start' => __("Localizing widgets (only if WPML Widgets is activated)...", 'migrate-polylang'),
+				'widg_start' => __("Localizing widgets...", 'migrate-polylang'),
 				'mig_done' => __("Migration done! Please check if everything is correct and deactivate or unistall Migrate Polylang to WPML plugin", 'migrate-polylang'),
 				'mig_again_label' => __("Migrate again", "migrate-polylang"),
 
@@ -243,7 +243,7 @@ endif; ?>
 	$text .= "<li><strong>".__("Migrate posts.", "migrate-polylang")."</strong> ".__("Plugin will set correct language for every post and join each other in language relation. This includes also Pages and other custom post types.")."</li>";
 	$text .= "<li><strong>".__("Migrate taxonomies.", "migrate-polylang")."</strong> ".__("Similar like with posts: your every category, tag and other custom taxonomies will get correct language assigment and language relation.")."</li>";
 	$text .= "<li><strong>".__("Migrate admin strings (only if you are using WPML String Translation).", "migrate-polylang")."</strong> ".__("Plugin will try to find if you have translated any admin string in Polylang and it will try to migrate this translation to WPML. Bear in mind that this probably will not migrate every string - this is because Polylang is handling string translation in much different way than WPML")."</li>";
-	$text .= "<li><strong>".__("Migrate widgets (only if you are using <a href='https://wordpress.org/plugins/wpml-widgets/' target='_blank'>WPML Widgets</a>.", "migrate-polylang")."</strong> ".__("If you have created some WordPress widgets while using Polylang and you've set language for them, this plugin will migrate it as well.")."</li>";
+	$text .= "<li><strong>".__("Migrate widgets.", "migrate-polylang")."</strong> ".__("If you set a language for a widget in Polylang, the widget gets the same language in WPML.", "migrate-polylang")."</li>";
 	$text .= "</ul>";
 
 	return $text;
@@ -264,10 +264,9 @@ $text = "
 	<h3>" . __("Before you click migrate you must be sure that:", "migrate-polylang") . "</h3>
 	<ul>
 	<li><span $poly_check" . __("Polylang is deactivated", "migrate-polylang") . "</span></li>
-	<li><span $wpml_check" . __("WPML Multilingual Blog/Cms is active", "migrate-polylang") . "</span></li>
+	<li><span $wpml_check" . __("WPML is active", "migrate-polylang") . "</span></li>
 	<li><span $wpml_wizard" . __("You have finished WPML configuration wizard", "migrate-polylang") . "</span></li>
 	<li>". __("If you want to import also strings translation, you must have WPML String Translation plugin activated (Not required)", "migrate-polylang") . "</li>
-	<li>". __("If you want to import also widgets language settings, you must have <a href='https://wordpress.org/plugins/wpml-widgets/' target='_blank'>WPML Widgets plugin</a> activated (Not required)", "migrate-polylang") . "</li>
 	</ul>
 		";
 
@@ -458,7 +457,7 @@ $text = "
 			);
 		} else {
 			$response = array(
-				'msg' => __("WPML Widgets isn't active, localization skipped.", 'migrate-polylang'),
+				'msg' => __("Localization skipped: WPML is not ready, or it does not support widget languages.", 'migrate-polylang'),
 				'res' => 'pass'
 			);
 		}
