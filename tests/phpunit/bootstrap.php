@@ -2,6 +2,7 @@
 
 define( 'ABSPATH', dirname( __DIR__, 2 ) . '/' );
 define( 'ICL_SITEPRESS_VERSION', 'test' );
+define( 'MPW_PLUGIN_FILE', ABSPATH . 'migrate-polylang-to-wpml.php' );
 
 require_once ABSPATH . 'vendor/autoload.php';
 require_once ABSPATH . 'vendor/otgs/unit-tests-framework/phpunit/bootstrap.php';
@@ -16,5 +17,4 @@ require_once ABSPATH . 'classes/class-mpw_htaccess_check.php';
 require_once ABSPATH . 'classes/class-mpw_polylang_string_storage.php';
 require_once __DIR__ . '/includes/wpml-string-translation-functions.php';
 require_once __DIR__ . '/includes/class-wpml-widgets-support-frontend.php';
-require_once __DIR__ . '/includes/wp-is-admin-function.php';
-require_once ABSPATH . 'migrate-polylang-to-wpml.php';
+require_once ABSPATH . 'classes/class-migrate-polylang-to-wpml.php';
