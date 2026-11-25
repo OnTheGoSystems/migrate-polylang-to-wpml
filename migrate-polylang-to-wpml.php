@@ -2,7 +2,7 @@
 
 /*
 Plugin Name: Migrate Polylang to WPML
-Description: Import multilingual data from Polylang to WPML | <a href="https://wpml.org/documentation/related-projects/migrate-polylang-wpml/">Documentation</a>
+Description: Import multilingual data from Polylang to WPML | <a href="https://wpml.org/documentation/migrate-polylang-wpml/">Documentation</a>
 Author: OnTheGoSystems
 Author URI: http://www.onthegosystems.com/
 Plugin uri: https://wpml.org
