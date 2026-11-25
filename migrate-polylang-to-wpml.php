@@ -299,8 +299,14 @@ $text = "
 		return apply_filters( 'wpml_setting', false, 'setup_complete' );
 	}
 
+	/**
+	 * Whether something on this site reads the `wpml_language` key the widgets step writes.
+	 *
+	 * WPML itself shows a widget by that key. When this step was written that took the
+	 * separate WPML Widgets plugin, which uses the same key and is still recognised.
+	 */
 	private function pre_check_wpml_widgets() {
-		return class_exists('WPML_Widgets');
+		return class_exists('WPML_Widgets_Support_Frontend') || class_exists('WPML_Widgets');
 	}
 
 	private function pre_check_wpml_st() {
